@@ -1,0 +1,26 @@
+int x;
+int y;
+int sum;
+int difference;
+int product;
+int quotient;
+float z;
+
+x = 10;
+y = 5;
+
+sum = x + y;
+difference = x - y;
+product = x * y;
+quotient = x / y;
+
+read z;
+
+print x;
+print y;
+print sum;
+print difference;
+print product;
+print quotient;
+print x + y;
+print z;
