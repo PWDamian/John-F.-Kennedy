@@ -2,11 +2,14 @@ import os
 import sys
 import subprocess
 from antlr4 import FileStream, CommonTokenStream
+
+from JohnsErrorHandler import JohnsErrorHandler
 from build.JohnFKennedyLexer import JohnFKennedyLexer
 from build.JohnFKennedyParser import JohnFKennedyParser
 from visitor import ASTBuilder
 from codegen import CodeGenerator
 from ast import *
+
 
 def main():
     if len(sys.argv) < 2:
@@ -18,6 +21,7 @@ def main():
     lexer = JohnFKennedyLexer(input_stream)
     token_stream = CommonTokenStream(lexer)
     parser = JohnFKennedyParser(token_stream)
+    parser.addErrorListener(JohnsErrorHandler)
     tree = parser.program()
 
     ast_builder = ASTBuilder()

@@ -45,3 +45,12 @@ class ASTBuilder(JohnFKennedyVisitor):
 
     def visitParenExpr(self, ctx: JohnFKennedyParser.ParenExprContext):
         return self.visit(ctx.expression())
+
+    def visitQstringExpr(self, ctx: JohnFKennedyParser.QstringExprContext):
+        return StringValueNode(str(ctx.QSTRING().getText())[1:-1])
+
+    def visitStringType(self, ctx: JohnFKennedyParser.StringTypeContext):
+        return Type.STRING
+
+    
+    

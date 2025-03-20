@@ -6,6 +6,7 @@ class ASTNode:
 class Type:
     INT = "int"
     FLOAT = "float"
+    STRING = "string"
 
 
 class NumberNode(ASTNode):
@@ -15,6 +16,15 @@ class NumberNode(ASTNode):
 
     def __str__(self):
         return f"Number({self.value}, {self.type})"
+
+
+
+class StringValueNode(ASTNode):
+    def __init__(self, value):
+        self.value = value
+
+    def __str__(self):
+        return f"String({self.value})"
 
 
 class VariableNode(ASTNode):

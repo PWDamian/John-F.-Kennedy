@@ -1,6 +1,9 @@
+import random
+import uuid
+
 from llvmlite import ir
 
-from ast import Type, AssignNode, DeclareAssignNode, PrintNode, ReadNode, NumberNode, VariableNode, BinaryOpNode
+from ast import Type, AssignNode, DeclareAssignNode, PrintNode, ReadNode, NumberNode, VariableNode, BinaryOpNode, StringValueNode
 
 
 class CodeGenerator:
@@ -15,8 +18,10 @@ class CodeGenerator:
         self.scanf = None
         self.format_str_int = None
         self.format_str_float = None
+        self.format_str_string = None
         self.scan_format_int = None
         self.scan_format_float = None
+        self.scan_format_string = None
 
     def generate_code(self, ast):
         self._create_main_function()
@@ -75,7 +80,7 @@ class CodeGenerator:
                 self.format_str_int.initializer = ir.Constant(format_arr_ty, format_data)
                 self.format_str_int.global_constant = True
             fmt_ptr = self.builder.bitcast(self.format_str_int, ir.PointerType(ir.IntType(8)))
-        else:
+        elif type_name == Type.FLOAT:
             if not self.format_str_float:
                 format_data = bytearray("%f\n\0", "utf8")
                 format_arr_ty = ir.ArrayType(ir.IntType(8), len(format_data))
@@ -83,6 +88,14 @@ class CodeGenerator:
                 self.format_str_float.initializer = ir.Constant(format_arr_ty, format_data)
                 self.format_str_float.global_constant = True
             fmt_ptr = self.builder.bitcast(self.format_str_float, ir.PointerType(ir.IntType(8)))
+        else:
+            if not self.format_str_string:
+                format_data = bytearray("%s\n\0", "utf8")
+                format_arr_ty = ir.ArrayType(ir.IntType(8), len(format_data))
+                self.format_str_string = ir.GlobalVariable(self.module, format_arr_ty, name="format_str_string")
+                self.format_str_string.initializer = ir.Constant(format_arr_ty, format_data)
+                self.format_str_string.global_constant = True
+            fmt_ptr = self.builder.bitcast(self.format_str_string, ir.PointerType(ir.IntType(8)))
 
         self.builder.call(self.printf, [fmt_ptr, value])
 
@@ -104,7 +117,7 @@ class CodeGenerator:
                 self.scan_format_int.initializer = ir.Constant(scan_arr_ty, scan_data)
                 self.scan_format_int.global_constant = True
             fmt_ptr = self.builder.bitcast(self.scan_format_int, ir.PointerType(ir.IntType(8)))
-        else:
+        elif type_name == Type.FLOAT:
             if not self.scan_format_float:
                 scan_data = bytearray("%lf\0", "utf8")
                 scan_arr_ty = ir.ArrayType(ir.IntType(8), len(scan_data))
@@ -112,13 +125,20 @@ class CodeGenerator:
                 self.scan_format_float.initializer = ir.Constant(scan_arr_ty, scan_data)
                 self.scan_format_float.global_constant = True
             fmt_ptr = self.builder.bitcast(self.scan_format_float, ir.PointerType(ir.IntType(8)))
+        else:
+            if not self.scan_format_string:
+                scan_data = bytearray("%s\0", "utf8")
+                scan_arr_ty = ir.ArrayType(ir.IntType(8), len(scan_data))
+                self.scan_format_string = ir.GlobalVariable(self.module, scan_arr_ty, name="scan_format_string")
+                self.scan_format_string.initializer = ir.Constant(scan_arr_ty, scan_data)
+                self.scan_format_string.global_constant = True
+            fmt_ptr = self.builder.bitcast(self.scan_format_string, ir.PointerType(ir.IntType(8)))
 
         self.builder.call(self.scanf, [fmt_ptr, ptr])
 
     def _generate_expression(self, node):
         if isinstance(node, NumberNode):
-            return ir.Constant(ir.IntType(32), node.value) if node.type == Type.INT else ir.Constant(ir.DoubleType(),
-                                                                                                     node.value)
+            return ir.Constant(ir.IntType(32), node.value) if node.type == Type.INT else ir.Constant(ir.DoubleType(), node.value)
         elif isinstance(node, VariableNode):
             ptr = self.variables.get(node.name)
             if not ptr:
@@ -147,15 +167,29 @@ class CodeGenerator:
                     '*': self.builder.fmul,
                     '/': self.builder.fdiv
                 }[node.op](left, right, name="float_op")
+        elif isinstance(node, StringValueNode):
+            string_data = bytearray(node.value + "\0", "utf8")
+            string_arr_ty = ir.ArrayType(ir.IntType(8), len(string_data))
+            string_const = ir.GlobalVariable(self.module, string_arr_ty, name=str(uuid.uuid4()))
+            string_const.initializer = ir.Constant(string_arr_ty, string_data)
+            string_const.global_constant = True
+            return self.builder.bitcast(string_const, ir.PointerType(ir.IntType(8)))
 
     def _get_llvm_type(self, type_name):
-        return ir.IntType(32) if type_name == Type.INT else ir.DoubleType()
+        if type_name == Type.INT:
+            return ir.IntType(32)
+        elif type_name == Type.FLOAT:
+            return ir.DoubleType()
+        elif type_name == Type.STRING:
+            return ir.PointerType(ir.IntType(8))
 
     def _get_type_from_value(self, value):
         if isinstance(value.type, ir.IntType):
             return Type.INT
         elif isinstance(value.type, ir.DoubleType):
             return Type.FLOAT
+        elif isinstance(value.type, ir.PointerType) and value.type.pointee == ir.IntType(8):
+            return Type.STRING
         else:
             raise ValueError(f"Unknown LLVM type: {value.type}")
 

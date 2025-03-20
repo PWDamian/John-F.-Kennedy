@@ -6,8 +6,13 @@ int product;
 int quotient;
 float z;
 
+string jfk;
+
 x = 10;
 y = 5;
+jfk = "John F. Kennedy";
+
+string jfk2 = "decl&assgn John F. Kennedy";
 
 sum = x + y;
 difference = x - y;
@@ -24,3 +29,5 @@ print product;
 print quotient;
 print x + y;
 print z;
+print jfk;
+print jfk2;
