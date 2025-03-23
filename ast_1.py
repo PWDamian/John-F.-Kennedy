@@ -1,3 +1,6 @@
+from llvmlite import ir
+
+
 class ASTNode:
     def __init__(self, line:int, column:int):
         self.line = line
@@ -7,17 +10,66 @@ class ASTNode:
 
 
 class Type:
-    INT = "int"
-    FLOAT = "float"
+    INT8 = "int8"
+    INT16 = "int16"
+    INT32 = "int32"
+    INT = "int" #int64
+    FLOAT16 = "float16"
+    FLOAT32 = "float32"
+    FLOAT = "float" #float64
     STRING = "string"
+    
+    _type_hierarchy = [INT8, INT16, INT32, INT, FLOAT, FLOAT16, FLOAT32, FLOAT]
 
+    @classmethod
+    def get_common_type(cls, left_type, right_type):
+        return cls._type_hierarchy[max(cls._type_hierarchy.index(left_type),cls._type_hierarchy.index(right_type))]
+
+    @classmethod
+    def get_ir_type(cls, type):
+        if type == Type.INT8:
+            return ir.IntType(8)
+        elif type == Type.INT16:
+            return ir.IntType(16)
+        elif type == Type.INT32:
+            return ir.IntType(32)
+        elif type == Type.INT:
+            return ir.IntType(64)
+        elif type == Type.FLOAT16:
+            return ir.HalfType()
+        elif type == Type.FLOAT32:
+            return ir.FloatType()
+        elif type == Type.FLOAT:
+            return ir.DoubleType()
+        elif type == Type.STRING:
+            return ir.PointerType(ir.IntType(8))
+        else:
+            raise ValueError(f"Unsupported type in type get ir: {type}")
 
 class NumberNode(ASTNode):
-    def __init__(self, value, line: int, column: int, type_name=Type.INT):
+    def __init__(self, value, line: int, column: int):
         super().__init__(line, column)
         self.value = value
-        self.type = type_name
+        if value is float:
+            self.type = self._get_float_for_value(value)
+        else:
+            self.type = self._get_int_for_value(value)
 
+    def _get_float_for_value(self, value):
+        if '.' in value:
+            return Type.FLOAT32 if len(value.split('.')[1]) <= 7 else Type.FLOAT
+
+    def _get_int_for_value(self, value):
+        int_value = int(value)
+        if -128 <= int_value <= 127:
+            return Type.INT8
+        elif -32768 <= int_value <= 32767:
+            return Type.INT16
+        elif -2147483648 <= int_value <= 2147483647:
+            return Type.INT32
+        else:
+            return Type.INT
+    
     def __str__(self):
         return f"Number({self.value}, {self.type})"
 

@@ -4,7 +4,7 @@ from enum import nonmember
 
 from llvmlite import ir
 
-from ast import Type, AssignNode, DeclareAssignNode, PrintNode, ReadNode, NumberNode, VariableNode, BinaryOpNode, StringValueNode
+from ast_1 import Type, AssignNode, DeclareAssignNode, PrintNode, ReadNode, NumberNode, VariableNode, BinaryOpNode, StringValueNode
 
 
 class CodeGenerator:
@@ -55,7 +55,7 @@ class CodeGenerator:
             self._generate_read(node)
 
     def _generate_declare_assign(self, node):
-        llvm_type = self._get_llvm_type(node.type)
+        llvm_type = Type.get_ir_type(node.type)
         ptr = self.builder.alloca(llvm_type, name=node.name)
         self.variables[node.name] = ptr
         self.variable_types[node.name] = node.type
@@ -81,7 +81,7 @@ class CodeGenerator:
             printf_ty = ir.FunctionType(ir.IntType(32), [ir.PointerType(ir.IntType(8))], var_arg=True)
             self.printf = ir.Function(self.module, printf_ty, name="printf")
 
-        if type_name == Type.INT:
+        if "int" in type_name:
             if not self.format_str_int:
                 format_data = bytearray("%d\n\0", "utf8")
                 format_arr_ty = ir.ArrayType(ir.IntType(8), len(format_data))
@@ -89,7 +89,7 @@ class CodeGenerator:
                 self.format_str_int.initializer = ir.Constant(format_arr_ty, format_data)
                 self.format_str_int.global_constant = True
             fmt_ptr = self.builder.bitcast(self.format_str_int, ir.PointerType(ir.IntType(8)))
-        elif type_name == Type.FLOAT:
+        elif "float" in type_name:
             if not self.format_str_float:
                 format_data = bytearray("%f\n\0", "utf8")
                 format_arr_ty = ir.ArrayType(ir.IntType(8), len(format_data))
@@ -118,7 +118,7 @@ class CodeGenerator:
             raise ValueError(f"Variable {node.name} not declared")
 
         type_name = self.variable_types.get(node.name)
-        if type_name == Type.INT:
+        if "int" in type_name:
             if not self.scan_format_int:
                 scan_data = bytearray("%d\0", "utf8")
                 scan_arr_ty = ir.ArrayType(ir.IntType(8), len(scan_data))
@@ -126,7 +126,7 @@ class CodeGenerator:
                 self.scan_format_int.initializer = ir.Constant(scan_arr_ty, scan_data)
                 self.scan_format_int.global_constant = True
             fmt_ptr = self.builder.bitcast(self.scan_format_int, ir.PointerType(ir.IntType(8)))
-        elif type_name == Type.FLOAT:
+        elif "float" in type_name:
             if not self.scan_format_float:
                 scan_data = bytearray("%lf\0", "utf8")
                 scan_arr_ty = ir.ArrayType(ir.IntType(8), len(scan_data))
@@ -147,7 +147,23 @@ class CodeGenerator:
 
     def _generate_expression(self, node):
         if isinstance(node, NumberNode):
-            return ir.Constant(ir.IntType(32), node.value) if node.type == Type.INT else ir.Constant(ir.DoubleType(), node.value)
+
+            if node.type == Type.INT8:
+                return ir.Constant(ir.IntType(8), node.value)
+            elif node.type == Type.INT16:
+                return ir.Constant(ir.IntType(16), node.value)
+            elif node.type == Type.INT32:
+                return ir.Constant(ir.IntType(32), node.value)
+            elif node.type == Type.INT:
+                return ir.Constant(ir.IntType(64), node.value)
+            elif node.type == Type.FLOAT16:
+                return ir.Constant(ir.HalfType(), node.value)
+            elif node.type == Type.FLOAT32:
+                return ir.Constant(ir.FloatType(), node.value)
+            elif node.type == Type.FLOAT:
+                return ir.Constant(ir.DoubleType(), node.value)
+            else:
+                raise ValueError(f"Unsupported type in expr gen: {node.type}")
         elif isinstance(node, VariableNode):
             ptr = self.variables.get(node.name)
             if not ptr:
@@ -158,7 +174,7 @@ class CodeGenerator:
             right = self._generate_expression(node.right)
             left_type = self._get_type_from_value(left)
             right_type = self._get_type_from_value(right)
-            result_type = Type.FLOAT if Type.FLOAT in (left_type, right_type) else Type.INT
+            result_type = Type.get_common_type(left_type, right_type)
             left = self._convert_if_needed(left, result_type)
             right = self._convert_if_needed(right, result_type)
 
@@ -184,18 +200,20 @@ class CodeGenerator:
             string_const.global_constant = True
             return self.builder.bitcast(string_const, ir.PointerType(ir.IntType(8)))
 
-    def _get_llvm_type(self, type_name):
-        if type_name == Type.INT:
-            return ir.IntType(32)
-        elif type_name == Type.FLOAT:
-            return ir.DoubleType()
-        elif type_name == Type.STRING:
-            return ir.PointerType(ir.IntType(8))
-
     def _get_type_from_value(self, value):
-        if isinstance(value.type, ir.IntType):
+        if value.type is ir.IntType(8):
+            return Type.INT8
+        elif value.type is ir.IntType(16):
+            return Type.INT16
+        elif value.type is  ir.IntType(32):
+            return Type.INT32
+        elif value.type is  ir.IntType(64):
             return Type.INT
-        elif isinstance(value.type, ir.DoubleType):
+        elif value.type is  ir.HalfType():
+            return Type.FLOAT16
+        elif value.type is ir.FloatType():
+            return Type.FLOAT32
+        elif value.type is ir.DoubleType():
             return Type.FLOAT
         elif isinstance(value.type, ir.PointerType) and value.type.pointee == ir.IntType(8):
             return Type.STRING
@@ -206,12 +224,27 @@ class CodeGenerator:
         source_type = self._get_type_from_value(value)
         if source_type == target_type:
             return value
-        if source_type == Type.INT and target_type == Type.FLOAT:
-            return self.builder.sitofp(value, ir.DoubleType(), name="int_to_float")
-        elif source_type == Type.FLOAT and target_type == Type.INT:
-            return self.builder.fptosi(value, ir.IntType(32), name="float_to_int")
+        if "int" in source_type and "float" in target_type:
+            return self.builder.sitofp(value, Type.get_ir_type(target_type), name="int_to_float")
+        elif "int" in target_type and "float" in source_type:
+            return self.builder.fptosi(value, Type.get_ir_type(target_type), name="float_to_int")
+        elif "float" in target_type and "float" in source_type:
+            ttype = Type.get_common_type(source_type, target_type)
+            if ttype is target_type:
+                # target type is higher, so we need to increate precision
+                return self.builder.fpext(value, Type.get_ir_type(ttype))
+            else:
+                return self.builder.fptrunc(value, Type.get_ir_type(ttype))
+        elif "int" in target_type and "int" in source_type:
+          ttype = Type.get_common_type(source_type, target_type)
+          if ttype is target_type:
+            # target type is higher, so we need to increate precision
+            return self.builder.sext(value, Type.get_ir_type(ttype))
+          else:
+            return self.builder.trunc(value, Type.get_ir_type(ttype))
+            
         else:
-            raise Exception(f"Semantic error - Illegal assignment of {source_type} to {target_type}")
+            raise ValueError(f"Semantic error - Illegal assignment of {source_type} to {target_type}")
 
     def get_ir(self):
         return str(self.module)

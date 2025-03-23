@@ -8,7 +8,7 @@ from build.JohnFKennedyLexer import JohnFKennedyLexer
 from build.JohnFKennedyParser import JohnFKennedyParser
 from visitor import ASTBuilder
 from codegen import CodeGenerator
-from ast import *
+from ast_1 import *
 
 
 def main():

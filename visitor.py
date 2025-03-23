@@ -1,7 +1,7 @@
 from build.JohnFKennedyParser import JohnFKennedyParser
 from build.JohnFKennedyVisitor import JohnFKennedyVisitor
 
-from ast import *
+from ast_1 import *
 
 
 class ASTBuilder(JohnFKennedyVisitor):
@@ -24,26 +24,16 @@ class ASTBuilder(JohnFKennedyVisitor):
   def visitReadStatement(self, ctx: JohnFKennedyParser.ReadStatementContext):
     return ReadNode(ctx.IDENTIFIER().getText(), ctx.start.line, ctx.start.column)
 
-  def visitIntType(self, ctx: JohnFKennedyParser.IntTypeContext):
-    return Type.INT
-
-  def visitFloatType(self, ctx: JohnFKennedyParser.FloatTypeContext):
-    return Type.FLOAT
-
   def visitNumberExpr(self, ctx: JohnFKennedyParser.NumberExprContext):
-    print("start, stop", ctx.start, ctx.stop)
-    return NumberNode(int(ctx.NUMBER().getText()), ctx.start.line, ctx.start.column, Type.INT)
+    return NumberNode(int(ctx.NUMBER().getText()), ctx.start.line, ctx.start.column)
 
   def visitFloatExpr(self, ctx: JohnFKennedyParser.FloatExprContext):
-    print("start, stop", ctx.start, ctx.stop)
-    return NumberNode(float(ctx.FLOAT_NUMBER().getText()), ctx.start.line, ctx.start.column, Type.FLOAT)
+    return NumberNode(float(ctx.FLOAT_NUMBER().getText()), ctx.start.line, ctx.start.column)
 
   def visitIdentifierExpr(self, ctx: JohnFKennedyParser.IdentifierExprContext):
-    print("start, stop", ctx.start, ctx.stop)
     return VariableNode(ctx.IDENTIFIER().getText(), ctx.start.line, ctx.start.column)
 
   def visitBinaryExpr(self, ctx: JohnFKennedyParser.BinaryExprContext):
-    print("start, stop", ctx.start, ctx.stop)
     left = self.visit(ctx.expression(0))
     op = ctx.getChild(1).getText()
     right = self.visit(ctx.expression(1))
@@ -57,3 +47,29 @@ class ASTBuilder(JohnFKennedyVisitor):
 
   def visitStringType(self, ctx: JohnFKennedyParser.StringTypeContext):
     return Type.STRING
+
+  def visitInt8Type(self, ctx: JohnFKennedyParser.Int8TypeContext):
+    return Type.INT8
+
+  def visitInt16Type(self, ctx: JohnFKennedyParser.Int16TypeContext):
+    return Type.INT16
+
+  def visitInt32Type(self, ctx: JohnFKennedyParser.Int32TypeContext):
+    return Type.INT32
+
+#int64  
+  def visitIntType(self, ctx: JohnFKennedyParser.IntTypeContext):
+    return Type.INT
+
+
+
+  def visitFloat16Type(self, ctx: JohnFKennedyParser.Float16TypeContext):
+    return Type.FLOAT16
+
+  def visitFloat32Type(self, ctx: JohnFKennedyParser.Float32TypeContext):
+    return Type.FLOAT32
+
+#float64
+  def visitFloatType(self, ctx: JohnFKennedyParser.FloatTypeContext):
+    return Type.FLOAT
+  

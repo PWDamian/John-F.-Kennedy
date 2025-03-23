@@ -4,8 +4,7 @@ int sum;
 int difference;
 int product;
 int quotient;
-float z;
-
+int z;
 string jfk;
 
 x = 10;
@@ -19,8 +18,11 @@ difference = x - y;
 product = x * y;
 quotient = x / y;
 
+z=130;
+
 read z;
 
+print z;
 print x;
 print y;
 print sum;

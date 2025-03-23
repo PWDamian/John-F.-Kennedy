@@ -16,9 +16,14 @@ statement
     ;
 
 type
-    : 'int'    # IntType
-    | 'float'  # FloatType
-    | 'string'  # StringType
+    : 'int8'      # Int8Type
+    | 'int16'     # Int16Type
+    | 'int32'     # Int32Type
+    | 'int'       # IntType
+    | 'float16'   # Float16Type
+    | 'float32'   # Float32Type
+    | 'float'     # FloatType
+    | 'string'    # StringType
     ;
 
 expression
