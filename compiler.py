@@ -1,14 +1,15 @@
 import os
-import sys
 import subprocess
-from antlr4 import FileStream, CommonTokenStream
+import sys
 
-from JohnsErrorHandler import JohnsErrorHandler
+from antlr4 import FileStream, CommonTokenStream
 from build.JohnFKennedyLexer import JohnFKennedyLexer
 from build.JohnFKennedyParser import JohnFKennedyParser
-from visitor import ASTBuilder
+
+from JohnsErrorHandler import JohnsErrorHandler
+from ast import *
 from codegen import CodeGenerator
-from ast_1 import *
+from visitor import ASTBuilder
 
 
 def main():
@@ -57,6 +58,7 @@ def main():
     result = subprocess.run([f"./{binary_file}"], check=False)
     if result.returncode != 0:
         print(f"\nUwaga: Program zakończył się kodem {result.returncode}")
+
 
 if __name__ == "__main__":
     main()

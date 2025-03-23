@@ -12,4 +12,5 @@ A simple programming language compiler implemented in Python, using ANTLR4 for p
 
 ```sh
 python compiler.py examples/test.jfk
+python compiler.py examples/string.jfk
 ```

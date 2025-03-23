@@ -1,0 +1,6 @@
+string stringToRead;
+stringToRead = "this value should be overwritten";
+read stringToRead;
+string stringToPrint = "Entered: ";
+print stringToPrint;
+print stringToRead;
