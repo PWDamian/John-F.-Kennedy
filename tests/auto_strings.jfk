@@ -1,0 +1,9 @@
+string greeting = "Hello, world!";
+greeting = "Greetings, ";
+string empty = "";
+string president;
+president = "John F. Kennedy";
+
+print greeting;
+print empty;
+print president;

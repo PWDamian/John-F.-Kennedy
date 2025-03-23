@@ -8,9 +8,44 @@ A simple programming language compiler implemented in Python, using ANTLR4 for p
 ./build.sh
 ```
 
-## Usage
+## Tests
 
-```sh
-python compiler.py examples/test.jfk
-python compiler.py examples/string.jfk
-```
+### Running
+
+- **Single test file:**
+    ```sh
+    python compiler.py tests/auto_numeric_types.jfk
+    ```
+
+- **All automatic tests (no input):**
+    ```sh
+    python compiler.py -d tests -t auto
+    ```
+
+- **All tests that require input:**
+    ```sh
+    python compiler.py -d tests -t normal
+    ```
+
+- **All tests:**
+    ```sh
+    python compiler.py -d tests -t all
+    ```
+
+### Additional Options
+
+- **Do not show AST:**
+    ```sh
+    python compiler.py --no-ast
+    ```
+
+- **Do not run the binary:**
+    ```sh
+    python compiler.py --no-run
+    ```
+
+### File Naming
+
+- `auto_*.jfk`: Tests that don't require user input.
+- `normal_*.jfk`: Tests that need user input.
+- `*.input`: Optional input files (must match the JFK filename).

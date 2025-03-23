@@ -4,25 +4,15 @@ int sum;
 int difference;
 int product;
 int quotient;
-int z;
-string jfk;
 
 x = 10;
 y = 8;
-jfk = "John F. Kennedy";
-
-string jfk2 = "";
 
 sum = x + y;
 difference = x - y;
 product = x * y;
 quotient = x / y;
 
-z=130;
-
-read z;
-
-print z;
 print x;
 print y;
 print sum;
@@ -30,6 +20,3 @@ print difference;
 print product;
 print quotient;
 print x + y;
-print z;
-print jfk;
-print jfk2;

@@ -1,0 +1,23 @@
+int8 a;
+int16 b;
+int32 c;
+int d;
+float16 e;
+float32 f;
+float g;
+
+a = 1;
+b = 2;
+c = 3;
+d = 4;
+e = 5.4;
+f = 6.5;
+g = 7.6;
+
+print a;
+print b;
+print c;
+print d;
+print e;
+print f;
+print g;

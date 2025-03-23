@@ -1,0 +1,14 @@
+int userNumber;
+string userName;
+
+print "Enter your name:";
+read userName;
+print "Hello, ";
+print userName;
+
+print "Enter a number:";
+read userNumber;
+print "You entered:";
+print userNumber;
+print "Doubled:";
+print userNumber * 2;
