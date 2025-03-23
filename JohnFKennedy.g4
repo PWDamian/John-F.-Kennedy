@@ -27,11 +27,24 @@ type
     ;
 
 expression
+    : addExpression
+    ;
+
+addExpression
+    : multiplyExpression                          # PassThroughAddExpr
+    | addExpression ('+'|'-') multiplyExpression  # AddExpr
+    ;
+
+multiplyExpression
+    : primaryExpression                              # PassThroughMultiplyExpr
+    | multiplyExpression ('*'|'/') primaryExpression # MultiplyExpr
+    ;
+
+primaryExpression
     : NUMBER                                # NumberExpr
     | FLOAT_NUMBER                          # FloatExpr
     | IDENTIFIER                            # IdentifierExpr
     | QSTRING                               # QstringExpr
-    | expression ('+'|'-'|'*'|'/') expression  # BinaryExpr
     | '(' expression ')'                    # ParenExpr
     ;
 

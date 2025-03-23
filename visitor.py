@@ -33,10 +33,22 @@ class ASTBuilder(JohnFKennedyVisitor):
     def visitIdentifierExpr(self, ctx: JohnFKennedyParser.IdentifierExprContext):
         return VariableNode(ctx.IDENTIFIER().getText(), ctx.start.line, ctx.start.column)
 
-    def visitBinaryExpr(self, ctx: JohnFKennedyParser.BinaryExprContext):
-        left = self.visit(ctx.expression(0))
+    def visitPassThroughAddExpr(self, ctx: JohnFKennedyParser.PassThroughAddExprContext):
+        return self.visit(ctx.multiplyExpression())
+
+    def visitAddExpr(self, ctx: JohnFKennedyParser.AddExprContext):
+        left = self.visit(ctx.addExpression())
         op = ctx.getChild(1).getText()
-        right = self.visit(ctx.expression(1))
+        right = self.visit(ctx.multiplyExpression())
+        return BinaryOpNode(left, op, right, ctx.start.line, ctx.start.column)
+
+    def visitPassThroughMultiplyExpr(self, ctx: JohnFKennedyParser.PassThroughMultiplyExprContext):
+        return self.visit(ctx.primaryExpression())
+
+    def visitMultiplyExpr(self, ctx: JohnFKennedyParser.MultiplyExprContext):
+        left = self.visit(ctx.multiplyExpression())
+        op = ctx.getChild(1).getText()
+        right = self.visit(ctx.primaryExpression())
         return BinaryOpNode(left, op, right, ctx.start.line, ctx.start.column)
 
     def visitParenExpr(self, ctx: JohnFKennedyParser.ParenExprContext):

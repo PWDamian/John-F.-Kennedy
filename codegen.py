@@ -199,7 +199,7 @@ class CodeGenerator:
             left = self._convert_if_needed(left, result_type)
             right = self._convert_if_needed(right, result_type)
 
-            if result_type == Type.INT:
+            if "int" in result_type:  # Check if it's any integer type
                 return {
                     '+': self.builder.add,
                     '-': self.builder.sub,
@@ -245,24 +245,45 @@ class CodeGenerator:
         source_type = self._get_type_from_value(value)
         if source_type == target_type:
             return value
+
+        # Handle int to float conversions
         if "int" in source_type and "float" in target_type:
             return self.builder.sitofp(value, Type.get_ir_type(target_type), name="int_to_float")
+        # Handle float to int conversions
         elif "int" in target_type and "float" in source_type:
             return self.builder.fptosi(value, Type.get_ir_type(target_type), name="float_to_int")
+        # Handle float to float conversions
         elif "float" in target_type and "float" in source_type:
-            ttype = Type.get_common_type(source_type, target_type)
-            if ttype is target_type:
-                # target type is higher, so we need to increate precision
-                return self.builder.fpext(value, Type.get_ir_type(ttype))
-            else:
-                return self.builder.fptrunc(value, Type.get_ir_type(ttype))
-        elif "int" in target_type and "int" in source_type:
-            ttype = Type.get_common_type(source_type, target_type)
-            if ttype is target_type:
-                return self.builder.sext(value, Type.get_ir_type(ttype))
-            else:
-                return self.builder.trunc(value, Type.get_ir_type(ttype))
+            target_ir_type = Type.get_ir_type(target_type)
 
+            # Fix for HalfType conversions
+            if target_type == Type.FLOAT16:
+                # Any floating point to float16 requires fptrunc
+                return self.builder.fptrunc(value, target_ir_type, name="float_to_half")
+            elif source_type == Type.FLOAT16:
+                # float16 to any larger float requires fpext
+                return self.builder.fpext(value, target_ir_type, name="half_to_float")
+            else:
+                # Normal float conversions
+                ttype = Type.get_common_type(source_type, target_type)
+                if ttype == target_type:
+                    # Target type is higher precision, so extend
+                    return self.builder.fpext(value, target_ir_type, name="float_extend")
+                else:
+                    # Target type is lower precision, so truncate
+                    return self.builder.fptrunc(value, target_ir_type, name="float_trunc")
+        # Handle int to int conversions
+        elif "int" in target_type and "int" in source_type:
+            target_ir_type = Type.get_ir_type(target_type)
+            source_bits = int(value.type.width)
+            target_bits = int(target_ir_type.width)
+
+            if target_bits > source_bits:
+                return self.builder.sext(value, target_ir_type, name="int_extend")
+            elif target_bits < source_bits:
+                return self.builder.trunc(value, target_ir_type, name="int_trunc")
+            else:
+                return value
         else:
             raise ValueError(f"Semantic error - Illegal assignment of {source_type} to {target_type}")
 

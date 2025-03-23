@@ -2,9 +2,10 @@ from llvmlite import ir
 
 
 class ASTNode:
-    def __init__(self, line:int, column:int):
+    def __init__(self, line: int, column: int):
         self.line = line
         self.column = column
+
     def __repr__(self):
         return self.__str__()
 
@@ -13,17 +14,17 @@ class Type:
     INT8 = "int8"
     INT16 = "int16"
     INT32 = "int32"
-    INT = "int" #int64
+    INT = "int"  # int64
     FLOAT16 = "float16"
     FLOAT32 = "float32"
-    FLOAT = "float" #float64
+    FLOAT = "float"  # float64
     STRING = "string"
-    
+
     _type_hierarchy = [INT8, INT16, INT32, INT, FLOAT, FLOAT16, FLOAT32, FLOAT]
 
     @classmethod
     def get_common_type(cls, left_type, right_type):
-        return cls._type_hierarchy[max(cls._type_hierarchy.index(left_type),cls._type_hierarchy.index(right_type))]
+        return cls._type_hierarchy[max(cls._type_hierarchy.index(left_type), cls._type_hierarchy.index(right_type))]
 
     @classmethod
     def get_ir_type(cls, type):
@@ -46,18 +47,21 @@ class Type:
         else:
             raise ValueError(f"Unsupported type in type get ir: {type}")
 
+
 class NumberNode(ASTNode):
     def __init__(self, value, line: int, column: int):
         super().__init__(line, column)
         self.value = value
-        if value is float:
+        if isinstance(value, float):
             self.type = self._get_float_for_value(value)
         else:
             self.type = self._get_int_for_value(value)
 
     def _get_float_for_value(self, value):
-        if '.' in value:
-            return Type.FLOAT32 if len(value.split('.')[1]) <= 7 else Type.FLOAT
+        str_value = str(value)
+        if '.' in str_value:
+            return Type.FLOAT32 if len(str_value.split('.')[1]) <= 7 else Type.FLOAT
+        return Type.FLOAT
 
     def _get_int_for_value(self, value):
         int_value = int(value)
@@ -69,10 +73,9 @@ class NumberNode(ASTNode):
             return Type.INT32
         else:
             return Type.INT
-    
+
     def __str__(self):
         return f"Number({self.value}, {self.type})"
-
 
 
 class StringValueNode(ASTNode):
@@ -93,12 +96,24 @@ class VariableNode(ASTNode):
         return f"Variable({self.name})"
 
 
+OPERATOR_PRECEDENCE = {
+    '+': 1,
+    '-': 1,
+    '*': 2,
+    '/': 2,
+    '^': 3,
+    '(': 0,
+    ')': 0
+}
+
+
 class BinaryOpNode(ASTNode):
     def __init__(self, left, op, right, line: int, column: int):
         super().__init__(line, column)
         self.left = left
         self.op = op
         self.right = right
+        self.precedence = OPERATOR_PRECEDENCE.get(op, 0)
 
     def __str__(self):
         return f"({self.left} {self.op} {self.right})"

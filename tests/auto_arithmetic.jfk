@@ -4,6 +4,7 @@ int sum;
 int difference;
 int product;
 int quotient;
+int parentheses;
 
 x = 10;
 y = 5;
@@ -12,6 +13,7 @@ sum = x + y;
 difference = x - y;
 product = x * y;
 quotient = x / y;
+parentheses = 2 * (x + y);
 
 print "x = ";
 print x;
@@ -25,6 +27,8 @@ print " product = ";
 print product;
 print " quotient = ";
 print quotient;
+print " parentheses = ";
+print parentheses;
 
 print " x + y = ";
 print x + y;
@@ -34,3 +38,5 @@ print " x * y = ";
 print x * y;
 print " x / y = ";
 print x / y;
+print " 2 * (x + y) = ";
+print 2 * (x + y);
