@@ -9,10 +9,10 @@ float z;
 string jfk;
 
 x = 10;
-y = 5;
+y = 8;
 jfk = "John F. Kennedy";
 
-string jfk2 = "decl&assgn John F. Kennedy";
+string jfk2 = "";
 
 sum = x + y;
 difference = x - y;

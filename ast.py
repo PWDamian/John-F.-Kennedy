@@ -1,4 +1,7 @@
 class ASTNode:
+    def __init__(self, line:int, column:int):
+        self.line = line
+        self.column = column
     def __repr__(self):
         return self.__str__()
 
@@ -10,7 +13,8 @@ class Type:
 
 
 class NumberNode(ASTNode):
-    def __init__(self, value, type_name=Type.INT):
+    def __init__(self, value, line: int, column: int, type_name=Type.INT):
+        super().__init__(line, column)
         self.value = value
         self.type = type_name
 
@@ -20,7 +24,8 @@ class NumberNode(ASTNode):
 
 
 class StringValueNode(ASTNode):
-    def __init__(self, value):
+    def __init__(self, value, line: int, column: int):
+        super().__init__(line, column)
         self.value = value
 
     def __str__(self):
@@ -28,7 +33,8 @@ class StringValueNode(ASTNode):
 
 
 class VariableNode(ASTNode):
-    def __init__(self, name):
+    def __init__(self, name, line: int, column: int):
+        super().__init__(line, column)
         self.name = name
 
     def __str__(self):
@@ -36,7 +42,8 @@ class VariableNode(ASTNode):
 
 
 class BinaryOpNode(ASTNode):
-    def __init__(self, left, op, right):
+    def __init__(self, left, op, right, line: int, column: int):
+        super().__init__(line, column)
         self.left = left
         self.op = op
         self.right = right
@@ -46,7 +53,8 @@ class BinaryOpNode(ASTNode):
 
 
 class AssignNode(ASTNode):
-    def __init__(self, name, value):
+    def __init__(self, name, value, line: int, column: int):
+        super().__init__(line, column)
         self.name = name
         self.value = value
 
@@ -55,7 +63,8 @@ class AssignNode(ASTNode):
 
 
 class DeclareAssignNode(ASTNode):
-    def __init__(self, type_name, name, value=None):
+    def __init__(self, type_name, name, line: int, column: int, value=None):
+        super().__init__(line, column)
         self.type = type_name
         self.name = name
         self.value = value
@@ -65,7 +74,8 @@ class DeclareAssignNode(ASTNode):
 
 
 class ReadNode(ASTNode):
-    def __init__(self, name):
+    def __init__(self, name, line: int, column: int):
+        super().__init__(line, column)
         self.name = name
 
     def __str__(self):
@@ -73,7 +83,8 @@ class ReadNode(ASTNode):
 
 
 class PrintNode(ASTNode):
-    def __init__(self, expression):
+    def __init__(self, expression, line: int, column: int):
+        super().__init__(line, column)
         self.expression = expression
 
     def __str__(self):
@@ -89,6 +100,8 @@ def print_ast_as_tree(node, indent=0):
             print_ast_as_tree(child, indent + 1)
     elif isinstance(node, NumberNode):
         print(f"{prefix}Number: {node.value} ({node.type})")
+    elif isinstance(node, StringValueNode):
+        print(f"{prefix}String: \"{node.value}\"")
     elif isinstance(node, VariableNode):
         print(f"{prefix}Variable: {node.name}")
     elif isinstance(node, BinaryOpNode):

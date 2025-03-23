@@ -1,5 +1,6 @@
 import random
 import uuid
+from enum import nonmember
 
 from llvmlite import ir
 
@@ -26,7 +27,15 @@ class CodeGenerator:
     def generate_code(self, ast):
         self._create_main_function()
         for node in ast:
-            self._generate_node(node)
+            try:
+                self._generate_node(node)
+            except Exception as e:
+                if None not in [node.line, node.column]:
+                    print(f"Error at {node.line}:{node.column}:")
+                else:
+                    print(node)
+                print(f"\tMessage: {str(e)}")
+                exit(1)
         self.builder.ret(ir.Constant(ir.IntType(32), 0))
 
     def _create_main_function(self):
@@ -201,7 +210,8 @@ class CodeGenerator:
             return self.builder.sitofp(value, ir.DoubleType(), name="int_to_float")
         elif source_type == Type.FLOAT and target_type == Type.INT:
             return self.builder.fptosi(value, ir.IntType(32), name="float_to_int")
-        return value
+        else:
+            raise Exception(f"Semantic error - Illegal assignment of {source_type} to {target_type}")
 
     def get_ir(self):
         return str(self.module)

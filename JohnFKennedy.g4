@@ -1,19 +1,9 @@
 grammar JohnFKennedy;
 
-// handling unexpected token np. int 0a = 1; zamiast int a = 1;
+// handling errors
 @members {
-    import antlr4
-
-    def report_fx(self, recognizer:Parser):
-        self.beginErrorCondition(recognizer)
-        t = recognizer.getCurrentToken()
-        tokenName = self.getTokenErrorDisplay(t)
-        expecting = self.getExpectedTokens(recognizer)
-        msg = f"line {recognizer.getCurrentToken().line}:{recognizer.getCurrentToken().column}: extraneous input " + tokenName + " expecting " \
-            + expecting.toString(recognizer.literalNames, recognizer.symbolicNames)
-        raise Exception(msg)
-
-    antlr4.error.ErrorStrategy.DefaultErrorStrategy.reportUnwantedToken = report_fx
+    from JohnsErrorHandler import JohnsErrorHandler
+    self.addErrorListener(JohnsErrorHandler())
 }
 
 program : (statement)+ EOF;
