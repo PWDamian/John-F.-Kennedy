@@ -1,14 +1,13 @@
-int userNumber;
 string userName;
+int userNumber;
 
-print "Enter your name:";
 read userName;
-print "Hello, ";
+print " Hello, ";
 print userName;
 
-print "Enter a number:";
+print " Enter a number: ";
 read userNumber;
-print "You entered:";
+print " You entered: ";
 print userNumber;
-print "Doubled:";
+print " Doubled: ";
 print userNumber * 2;

@@ -20,7 +20,7 @@ class TestType(Enum):
     ALL = "all"  # Run all tests
 
 
-def compile_jfk_file(input_file, show_ast=True, run_binary=True, input_values=None):
+def compile_jfk_file(input_file, show_ast=True, show_llvm=True, run_binary=True, input_values=None):
     """Compile a single JFK file and optionally run it with provided input"""
     print(f"\n=== Compiling {input_file} ===\n")
 
@@ -45,8 +45,10 @@ def compile_jfk_file(input_file, show_ast=True, run_binary=True, input_values=No
     codegen = CodeGenerator()
     codegen.generate_code(ast)
     llvm_ir = codegen.get_ir()
-    print("\nLLVM IR:")
-    print(llvm_ir)
+
+    if show_llvm:
+        print("\nLLVM IR:")
+        print(llvm_ir)
 
     # Create a unique output filename based on the input filename
     base_name = os.path.basename(input_file).split('.')[0]
@@ -63,7 +65,7 @@ def compile_jfk_file(input_file, show_ast=True, run_binary=True, input_values=No
     try:
         subprocess.run(["llc", ir_file, "-o", asm_file], check=True)
         subprocess.run(["clang", asm_file, "-o", binary_file], check=True)
-        print(f"\nKompilacja IR do kodu maszynowego zakończona!")
+        print(f"Kompilacja IR do kodu maszynowego zakończona!")
 
         if run_binary:
             print(f"\nUruchamiam wygenerowany program: {binary_file}")
@@ -133,7 +135,8 @@ def main():
 
     parser.add_argument('-t', '--type', choices=['normal', 'auto', 'all'],
                         default='all', help='Type of tests to run')
-    parser.add_argument('--no-ast', action='store_true', help='Hide AST output')
+    parser.add_argument('--show-ast', action='store_true', help='Display AST output')
+    parser.add_argument('--show-llvm', action='store_true', help='Display LLVM IR output')
     parser.add_argument('--no-run', action='store_true', help='Do not run the compiled binary')
 
     args = parser.parse_args()
@@ -141,7 +144,7 @@ def main():
     if args.file:
         # Compile a single file
         input_values = load_input_data(args.file)
-        compile_jfk_file(args.file, not args.no_ast, not args.no_run, input_values)
+        compile_jfk_file(args.file, args.show_ast, args.show_llvm, not args.no_run, input_values)
 
     elif args.directory:
         # Run tests from directory
@@ -155,7 +158,7 @@ def main():
         success_count = 0
         for test_file in test_files:
             input_values = load_input_data(test_file)
-            if compile_jfk_file(test_file, not args.no_ast, not args.no_run, input_values):
+            if compile_jfk_file(test_file, args.show_ast, args.show_llvm, not args.no_run, input_values):
                 success_count += 1
 
         print(f"\n=== Test Summary ===")

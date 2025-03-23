@@ -34,9 +34,14 @@ A simple programming language compiler implemented in Python, using ANTLR4 for p
 
 ### Additional Options
 
-- **Do not show AST:**
+- **Show AST:**
     ```sh
-    python compiler.py --no-ast
+    python compiler.py --show-ast
+    ```
+
+- **Show LLVM IR:**
+    ```sh
+    python compiler.py --show-llvm
     ```
 
 - **Do not run the binary:**

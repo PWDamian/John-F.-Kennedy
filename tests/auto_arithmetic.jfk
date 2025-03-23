@@ -6,17 +6,31 @@ int product;
 int quotient;
 
 x = 10;
-y = 8;
+y = 5;
 
 sum = x + y;
 difference = x - y;
 product = x * y;
 quotient = x / y;
 
+print "x = ";
 print x;
+print " y = ";
 print y;
+print " sum = ";
 print sum;
+print " difference = ";
 print difference;
+print " product = ";
 print product;
+print " quotient = ";
 print quotient;
+
+print " x + y = ";
 print x + y;
+print " x - y = ";
+print x - y;
+print " x * y = ";
+print x * y;
+print " x / y = ";
+print x / y;
