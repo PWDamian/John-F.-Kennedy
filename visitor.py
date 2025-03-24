@@ -14,9 +14,22 @@ class ASTBuilder(JohnFKennedyVisitor):
         value = self.visit(ctx.expression()) if ctx.expression() else None
         return DeclareAssignNode(type_name, ctx.IDENTIFIER().getText(), ctx.start.line, ctx.start.column, value)
 
+    def visitDeclareArrayStatement(self,
+                                   ctx: JohnFKennedyParser.DeclareArrayStatementContext):
+        type_name = self.visit(ctx.arrayType())
+        size = int(ctx.NUMBER().getText())
+        return DeclareArrayNode(type_name, ctx.IDENTIFIER().getText(), size, ctx.start.line, ctx.start.column)
+
     def visitAssignStatement(self,
                              ctx: JohnFKennedyParser.AssignStatementContext):
         return AssignNode(ctx.IDENTIFIER().getText(), self.visit(ctx.expression()), ctx.start.line, ctx.start.column)
+
+    def visitArrayAssignStatement(self,
+                                  ctx: JohnFKennedyParser.ArrayAssignStatementContext):
+        name = ctx.IDENTIFIER().getText()
+        index = self.visit(ctx.expression(0))
+        value = self.visit(ctx.expression(1))
+        return ArrayAssignNode(name, index, value, ctx.start.line, ctx.start.column)
 
     def visitPrintStatement(self, ctx: JohnFKennedyParser.PrintStatementContext):
         return PrintNode(self.visit(ctx.expression()), ctx.start.line, ctx.start.column)
@@ -32,6 +45,11 @@ class ASTBuilder(JohnFKennedyVisitor):
 
     def visitIdentifierExpr(self, ctx: JohnFKennedyParser.IdentifierExprContext):
         return VariableNode(ctx.IDENTIFIER().getText(), ctx.start.line, ctx.start.column)
+
+    def visitArrayAccessExpr(self, ctx: JohnFKennedyParser.ArrayAccessExprContext):
+        name = ctx.IDENTIFIER().getText()
+        index = self.visit(ctx.expression())
+        return ArrayAccessNode(name, index, ctx.start.line, ctx.start.column)
 
     def visitPassThroughAddExpr(self, ctx: JohnFKennedyParser.PassThroughAddExprContext):
         return self.visit(ctx.multiplyExpression())
@@ -82,3 +100,28 @@ class ASTBuilder(JohnFKennedyVisitor):
     # float64
     def visitFloatType(self, ctx: JohnFKennedyParser.FloatTypeContext):
         return Type.FLOAT
+
+    # Array types
+    def visitArrayInt8Type(self, ctx: JohnFKennedyParser.ArrayInt8TypeContext):
+        return "array_int8"
+
+    def visitArrayInt16Type(self, ctx: JohnFKennedyParser.ArrayInt16TypeContext):
+        return "array_int16"
+
+    def visitArrayInt32Type(self, ctx: JohnFKennedyParser.ArrayInt32TypeContext):
+        return "array_int32"
+
+    def visitArrayIntType(self, ctx: JohnFKennedyParser.ArrayIntTypeContext):
+        return "array_int"
+
+    def visitArrayFloat16Type(self, ctx: JohnFKennedyParser.ArrayFloat16TypeContext):
+        return "array_float16"
+
+    def visitArrayFloat32Type(self, ctx: JohnFKennedyParser.ArrayFloat32TypeContext):
+        return "array_float32"
+
+    def visitArrayFloatType(self, ctx: JohnFKennedyParser.ArrayFloatTypeContext):
+        return "array_float"
+
+    def visitArrayStringType(self, ctx: JohnFKennedyParser.ArrayStringTypeContext):
+        return "array_string"

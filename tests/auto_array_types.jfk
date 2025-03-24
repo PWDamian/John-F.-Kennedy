@@ -1,0 +1,13 @@
+array_int8 arr[10];
+arr[0] = 1;
+arr[5] = 6;
+
+array_string strArr[2];
+strArr[0] = " Hello ";
+strArr[1] = "World";
+
+print arr[0];
+print arr[5];
+
+print strArr[0];
+print strArr[1];

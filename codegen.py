@@ -3,7 +3,7 @@ import uuid
 from llvmlite import ir
 
 from ast import Type, AssignNode, DeclareAssignNode, PrintNode, ReadNode, NumberNode, VariableNode, BinaryOpNode, \
-    StringValueNode
+    StringValueNode, ArrayAccessNode, DeclareArrayNode, ArrayAssignNode
 
 
 class CodeGenerator:
@@ -14,6 +14,8 @@ class CodeGenerator:
         self.func = None
         self.variables = {}
         self.variable_types = {}
+        self.array_sizes = {}  # Store array sizes
+        self.array_element_types = {}  # Store element types for arrays
         self.printf = None
         self.scanf = None
         self.format_str_int = None
@@ -52,6 +54,56 @@ class CodeGenerator:
             self._generate_print(node)
         elif isinstance(node, ReadNode):
             self._generate_read(node)
+        elif isinstance(node, DeclareArrayNode):
+            self._generate_declare_array(node)
+        elif isinstance(node, ArrayAssignNode):
+            self._generate_array_assign(node)
+
+    def _generate_array_assign(self, node):
+        # Get array variable
+        array_ptr = self.variables.get(node.name)
+        if not array_ptr:
+            raise ValueError(f"Array variable {node.name} not declared")
+
+        element_type = self.array_element_types.get(node.name)
+        if not element_type:
+            raise ValueError(f"Unknown element type for array {node.name}")
+
+        # Get index
+        index_value = self._generate_expression(node.index)
+        if not isinstance(index_value.type, ir.IntType):
+            raise ValueError(f"Array index must be of integer type, got {index_value.type}")
+
+        # Convert index to i32 if needed
+        if index_value.type.width != 32:
+            index_value = self.builder.trunc(index_value, ir.IntType(32)) if index_value.type.width > 32 \
+                else self.builder.sext(index_value, ir.IntType(32))
+
+        # Get element pointer
+        element_ptr = self.builder.gep(array_ptr, [ir.Constant(ir.IntType(32), 0), index_value])
+
+        # Generate value and store
+        value = self._generate_expression(node.value)
+        value = self._convert_if_needed(value, element_type)
+        self.builder.store(value, element_ptr)
+
+    def _generate_declare_array(self, node):
+        if node.size <= 0:
+            raise ValueError(f"Array size must be positive, got {node.size}")
+
+        # Extract element type from array type (array_int8 -> int8)
+        element_type = node.element_type
+        llvm_element_type = Type.get_ir_type(element_type)
+
+        # Create array type and allocate
+        array_type = ir.ArrayType(llvm_element_type, node.size)
+        array_ptr = self.builder.alloca(array_type, name=node.name)
+
+        # Store array info
+        self.variables[node.name] = array_ptr
+        self.variable_types[node.name] = Type.ARRAY
+        self.array_sizes[node.name] = node.size
+        self.array_element_types[node.name] = element_type
 
     def _generate_assign(self, node):
         # Get the variable pointer
@@ -115,6 +167,10 @@ class CodeGenerator:
 
         if isinstance(node.expression, VariableNode):
             type_name = self.variable_types.get(node.expression.name)
+        elif isinstance(node.expression, ArrayAccessNode):
+            # For array elements, use the element type
+            element_type = self.array_element_types.get(node.expression.name)
+            type_name = element_type if element_type else self._get_type_from_value(value)
         else:
             type_name = self._get_type_from_value(value)
 
@@ -220,6 +276,34 @@ class CodeGenerator:
             string_const.initializer = ir.Constant(string_arr_ty, string_data)
             string_const.global_constant = True
             return self.builder.bitcast(string_const, ir.PointerType(ir.IntType(8)))
+        elif isinstance(node, ArrayAccessNode):
+            # Get array variable
+            array_ptr = self.variables.get(node.name)
+            if not array_ptr:
+                raise ValueError(f"Array variable {node.name} not declared")
+
+            # Get the element type
+            element_type = self.array_element_types.get(node.name)
+            if not element_type:
+                raise ValueError(f"Unknown element type for array {node.name}")
+
+            # Generate index expression
+            index_value = self._generate_expression(node.index)
+
+            # Ensure index is an integer
+            if not isinstance(index_value.type, ir.IntType):
+                raise ValueError(f"Array index must be of integer type, got {index_value.type}")
+
+            # Convert index to i32 if needed
+            if index_value.type.width != 32:
+                index_value = self.builder.trunc(index_value, ir.IntType(32)) if index_value.type.width > 32 \
+                    else self.builder.sext(index_value, ir.IntType(32))
+
+            # Get element pointer
+            element_ptr = self.builder.gep(array_ptr, [ir.Constant(ir.IntType(32), 0), index_value])
+
+            # Load and return the value
+            return self.builder.load(element_ptr, f"{node.name}_element")
 
     def _get_type_from_value(self, value):
         if value.type is ir.IntType(8):

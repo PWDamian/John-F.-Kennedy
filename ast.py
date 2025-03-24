@@ -19,11 +19,15 @@ class Type:
     FLOAT32 = "float32"
     FLOAT = "float"  # float64
     STRING = "string"
+    ARRAY = "array"  # New array type
 
     _type_hierarchy = [INT8, INT16, INT32, INT, FLOAT, FLOAT16, FLOAT32, FLOAT]
 
     @classmethod
     def get_common_type(cls, left_type, right_type):
+        # If either is array, can't determine common type
+        if left_type == Type.ARRAY or right_type == Type.ARRAY:
+            raise ValueError("Cannot determine common type involving arrays")
         return cls._type_hierarchy[max(cls._type_hierarchy.index(left_type), cls._type_hierarchy.index(right_type))]
 
     @classmethod
@@ -96,6 +100,16 @@ class VariableNode(ASTNode):
         return f"Variable({self.name})"
 
 
+class ArrayAccessNode(ASTNode):
+    def __init__(self, name, index, line: int, column: int):
+        super().__init__(line, column)
+        self.name = name
+        self.index = index
+
+    def __str__(self):
+        return f"ArrayAccess({self.name}[{self.index}])"
+
+
 OPERATOR_PRECEDENCE = {
     '+': 1,
     '-': 1,
@@ -129,6 +143,17 @@ class AssignNode(ASTNode):
         return f"{self.name} = {self.value}"
 
 
+class ArrayAssignNode(ASTNode):
+    def __init__(self, name, index, value, line: int, column: int):
+        super().__init__(line, column)
+        self.name = name
+        self.index = index
+        self.value = value
+
+    def __str__(self):
+        return f"{self.name}[{self.index}] = {self.value}"
+
+
 class DeclareAssignNode(ASTNode):
     def __init__(self, type_name, name, line: int, column: int, value=None):
         super().__init__(line, column)
@@ -138,6 +163,18 @@ class DeclareAssignNode(ASTNode):
 
     def __str__(self):
         return f"{self.type} {self.name} = {self.value if self.value is not None else 'uninitialized'}"
+
+
+class DeclareArrayNode(ASTNode):
+    def __init__(self, type_name, name, size, line: int, column: int):
+        super().__init__(line, column)
+        self.type = type_name
+        self.name = name
+        self.size = size
+        self.element_type = type_name.split('_')[1] if '_' in type_name else Type.INT
+
+    def __str__(self):
+        return f"{self.type} {self.name}[{self.size}]"
 
 
 class ReadNode(ASTNode):
@@ -171,6 +208,10 @@ def print_ast_as_tree(node, indent=0):
         print(f"{prefix}String: \"{node.value}\"")
     elif isinstance(node, VariableNode):
         print(f"{prefix}Variable: {node.name}")
+    elif isinstance(node, ArrayAccessNode):
+        print(f"{prefix}ArrayAccess: {node.name}")
+        print(f"{prefix}  Index:")
+        print_ast_as_tree(node.index, indent + 2)
     elif isinstance(node, BinaryOpNode):
         print(f"{prefix}BinaryOp: {node.op}")
         print(f"{prefix}  Left:")
@@ -181,6 +222,12 @@ def print_ast_as_tree(node, indent=0):
         print(f"{prefix}Assign: {node.name}")
         print(f"{prefix}  Value:")
         print_ast_as_tree(node.value, indent + 2)
+    elif isinstance(node, ArrayAssignNode):
+        print(f"{prefix}ArrayAssign: {node.name}")
+        print(f"{prefix}  Index:")
+        print_ast_as_tree(node.index, indent + 2)
+        print(f"{prefix}  Value:")
+        print_ast_as_tree(node.value, indent + 2)
     elif isinstance(node, DeclareAssignNode):
         print(f"{prefix}DeclareAssign: {node.name} ({node.type})")
         if node.value is not None:
@@ -188,6 +235,8 @@ def print_ast_as_tree(node, indent=0):
             print_ast_as_tree(node.value, indent + 2)
         else:
             print(f"{prefix}  Uninitialized")
+    elif isinstance(node, DeclareArrayNode):
+        print(f"{prefix}DeclareArray: {node.name} ({node.type}[{node.size}])")
     elif isinstance(node, PrintNode):
         print(f"{prefix}Print:")
         print_ast_as_tree(node.expression, indent + 1)
