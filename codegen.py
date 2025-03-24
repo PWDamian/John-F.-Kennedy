@@ -3,7 +3,8 @@ import uuid
 from llvmlite import ir
 
 from ast import Type, AssignNode, DeclareAssignNode, PrintNode, ReadNode, NumberNode, VariableNode, BinaryOpNode, \
-    StringValueNode, ArrayAccessNode, DeclareArrayNode, ArrayAssignNode
+    StringValueNode, ArrayAccessNode, DeclareArrayNode, ArrayAssignNode, DeclareMatrixNode, MatrixAssignNode, \
+    MatrixAccessNode
 
 
 class CodeGenerator:
@@ -24,6 +25,9 @@ class CodeGenerator:
         self.scan_format_int = None
         self.scan_format_float = None
         self.scan_format_string = None
+        self.matrix_rows = {}
+        self.matrix_cols = {}
+        self.matrix_element_types = {}
 
     def generate_code(self, ast):
         self._create_main_function()
@@ -58,6 +62,72 @@ class CodeGenerator:
             self._generate_declare_array(node)
         elif isinstance(node, ArrayAssignNode):
             self._generate_array_assign(node)
+        elif isinstance(node, DeclareMatrixNode):
+            self._generate_declare_matrix(node)
+        elif isinstance(node, MatrixAssignNode):
+            self._generate_matrix_assign(node)
+
+    def _generate_declare_matrix(self, node):
+        if node.rows <= 0 or node.cols <= 0:
+            raise ValueError(f"Matrix dimensions must be positive, got [{node.rows}][{node.cols}]")
+
+        # Extract element type
+        element_type = node.element_type
+        llvm_element_type = Type.get_ir_type(element_type)
+
+        # Create matrix type (array of arrays) and allocate
+        row_type = ir.ArrayType(llvm_element_type, node.cols)
+        matrix_type = ir.ArrayType(row_type, node.rows)
+        matrix_ptr = self.builder.alloca(matrix_type, name=node.name)
+
+        # Store matrix info
+        self.variables[node.name] = matrix_ptr
+        self.variable_types[node.name] = Type.ARRAY  # Treat as a special kind of array
+        self.matrix_rows[node.name] = node.rows
+        self.matrix_cols[node.name] = node.cols
+        self.matrix_element_types[node.name] = element_type
+
+    def _generate_matrix_assign(self, node):
+        # Get matrix variable
+        matrix_ptr = self.variables.get(node.name)
+        if not matrix_ptr:
+            raise ValueError(f"Matrix variable {node.name} not declared")
+
+        element_type = self.matrix_element_types.get(node.name)
+        if not element_type:
+            raise ValueError(f"Unknown element type for matrix {node.name}")
+
+        # Get row index
+        row_index = self._generate_expression(node.row_index)
+        if not isinstance(row_index.type, ir.IntType):
+            raise ValueError(f"Matrix row index must be of integer type, got {row_index.type}")
+
+        # Get column index
+        col_index = self._generate_expression(node.col_index)
+        if not isinstance(col_index.type, ir.IntType):
+            raise ValueError(f"Matrix column index must be of integer type, got {col_index.type}")
+
+        # Convert indices to i32 if needed
+        if row_index.type.width != 32:
+            row_index = self.builder.trunc(row_index, ir.IntType(32)) if row_index.type.width > 32 \
+                else self.builder.sext(row_index, ir.IntType(32))
+
+        if col_index.type.width != 32:
+            col_index = self.builder.trunc(col_index, ir.IntType(32)) if col_index.type.width > 32 \
+                else self.builder.sext(col_index, ir.IntType(32))
+
+        # Get element pointer (need to go through two levels of arrays)
+        indices = [
+            ir.Constant(ir.IntType(32), 0),  # Base pointer
+            row_index,  # Row index
+            col_index  # Column index
+        ]
+        element_ptr = self.builder.gep(matrix_ptr, indices)
+
+        # Generate value and store
+        value = self._generate_expression(node.value)
+        value = self._convert_if_needed(value, element_type)
+        self.builder.store(value, element_ptr)
 
     def _generate_array_assign(self, node):
         # Get array variable
@@ -301,6 +371,49 @@ class CodeGenerator:
 
             # Get element pointer
             element_ptr = self.builder.gep(array_ptr, [ir.Constant(ir.IntType(32), 0), index_value])
+
+            # Load and return the value
+            return self.builder.load(element_ptr, f"{node.name}_element")
+        elif isinstance(node, MatrixAccessNode):
+            # Get matrix variable
+            matrix_ptr = self.variables.get(node.name)
+            if not matrix_ptr:
+                raise ValueError(f"Matrix variable {node.name} not declared")
+
+            # Get the element type
+            element_type = self.matrix_element_types.get(node.name)
+            if not element_type:
+                raise ValueError(f"Unknown element type for matrix {node.name}")
+
+            # Generate row index expression
+            row_index = self._generate_expression(node.row_index)
+
+            # Generate column index expression
+            col_index = self._generate_expression(node.col_index)
+
+            # Ensure indices are integers
+            if not isinstance(row_index.type, ir.IntType):
+                raise ValueError(f"Matrix row index must be of integer type, got {row_index.type}")
+
+            if not isinstance(col_index.type, ir.IntType):
+                raise ValueError(f"Matrix column index must be of integer type, got {col_index.type}")
+
+            # Convert indices to i32 if needed
+            if row_index.type.width != 32:
+                row_index = self.builder.trunc(row_index, ir.IntType(32)) if row_index.type.width > 32 \
+                    else self.builder.sext(row_index, ir.IntType(32))
+
+            if col_index.type.width != 32:
+                col_index = self.builder.trunc(col_index, ir.IntType(32)) if col_index.type.width > 32 \
+                    else self.builder.sext(col_index, ir.IntType(32))
+
+            # Get element pointer
+            indices = [
+                ir.Constant(ir.IntType(32), 0),  # Base pointer
+                row_index,  # Row index
+                col_index  # Column index
+            ]
+            element_ptr = self.builder.gep(matrix_ptr, indices)
 
             # Load and return the value
             return self.builder.load(element_ptr, f"{node.name}_element")

@@ -125,3 +125,43 @@ class ASTBuilder(JohnFKennedyVisitor):
 
     def visitArrayStringType(self, ctx: JohnFKennedyParser.ArrayStringTypeContext):
         return "array_string"
+
+    def visitDeclareMatrixStatement(self, ctx: JohnFKennedyParser.DeclareMatrixStatementContext):
+        type_name = self.visit(ctx.matrixType())
+        rows = int(ctx.NUMBER(0).getText())
+        cols = int(ctx.NUMBER(1).getText())
+        return DeclareMatrixNode(type_name, ctx.IDENTIFIER().getText(), rows, cols, ctx.start.line, ctx.start.column)
+
+    def visitMatrixAssignStatement(self, ctx: JohnFKennedyParser.MatrixAssignStatementContext):
+        name = ctx.IDENTIFIER().getText()
+        row_index = self.visit(ctx.expression(0))
+        col_index = self.visit(ctx.expression(1))
+        value = self.visit(ctx.expression(2))
+        return MatrixAssignNode(name, row_index, col_index, value, ctx.start.line, ctx.start.column)
+
+    def visitMatrixAccessExpr(self, ctx: JohnFKennedyParser.MatrixAccessExprContext):
+        name = ctx.IDENTIFIER().getText()
+        row_index = self.visit(ctx.expression(0))
+        col_index = self.visit(ctx.expression(1))
+        return MatrixAccessNode(name, row_index, col_index, ctx.start.line, ctx.start.column)
+
+    def visitMatrixInt8Type(self, ctx: JohnFKennedyParser.MatrixInt8TypeContext):
+        return "matrix_int8"
+
+    def visitMatrixInt16Type(self, ctx: JohnFKennedyParser.MatrixInt16TypeContext):
+        return "matrix_int16"
+
+    def visitMatrixInt32Type(self, ctx: JohnFKennedyParser.MatrixInt32TypeContext):
+        return "matrix_int32"
+
+    def visitMatrixIntType(self, ctx: JohnFKennedyParser.MatrixIntTypeContext):
+        return "matrix_int"
+
+    def visitMatrixFloat16Type(self, ctx: JohnFKennedyParser.MatrixFloat16TypeContext):
+        return "matrix_float16"
+
+    def visitMatrixFloat32Type(self, ctx: JohnFKennedyParser.MatrixFloat32TypeContext):
+        return "matrix_float32"
+
+    def visitMatrixFloatType(self, ctx: JohnFKennedyParser.MatrixFloatTypeContext):
+        return "matrix_float"

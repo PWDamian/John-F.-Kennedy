@@ -242,5 +242,57 @@ def print_ast_as_tree(node, indent=0):
         print_ast_as_tree(node.expression, indent + 1)
     elif isinstance(node, ReadNode):
         print(f"{prefix}Read: {node.name}")
+    elif isinstance(node, MatrixAccessNode):
+        print(f"{prefix}MatrixAccess: {node.name}")
+        print(f"{prefix}  Row Index:")
+        print_ast_as_tree(node.row_index, indent + 2)
+        print(f"{prefix}  Column Index:")
+        print_ast_as_tree(node.col_index, indent + 2)
+    elif isinstance(node, DeclareMatrixNode):
+        print(f"{prefix}DeclareMatrix: {node.name} ({node.type}[{node.rows}][{node.cols}])")
+    elif isinstance(node, MatrixAssignNode):
+        print(f"{prefix}MatrixAssign: {node.name}")
+        print(f"{prefix}  Row Index:")
+        print_ast_as_tree(node.row_index, indent + 2)
+        print(f"{prefix}  Column Index:")
+        print_ast_as_tree(node.col_index, indent + 2)
+        print(f"{prefix}  Value:")
+        print_ast_as_tree(node.value, indent + 2)
     else:
         print(f"{prefix}Unknown node type: {type(node)}")
+
+
+class MatrixAccessNode(ASTNode):
+    def __init__(self, name, row_index, col_index, line: int, column: int):
+        super().__init__(line, column)
+        self.name = name
+        self.row_index = row_index
+        self.col_index = col_index
+
+    def __str__(self):
+        return f"MatrixAccess({self.name}[{self.row_index}][{self.col_index}])"
+
+
+class DeclareMatrixNode(ASTNode):
+    def __init__(self, type_name, name, rows, cols, line: int, column: int):
+        super().__init__(line, column)
+        self.type = type_name
+        self.name = name
+        self.rows = rows
+        self.cols = cols
+        self.element_type = type_name.split('_')[1] if '_' in type_name else Type.INT
+
+    def __str__(self):
+        return f"{self.type} {self.name}[{self.rows}][{self.cols}]"
+
+
+class MatrixAssignNode(ASTNode):
+    def __init__(self, name, row_index, col_index, value, line: int, column: int):
+        super().__init__(line, column)
+        self.name = name
+        self.row_index = row_index
+        self.col_index = col_index
+        self.value = value
+
+    def __str__(self):
+        return f"{self.name}[{self.row_index}][{self.col_index}] = {self.value}"

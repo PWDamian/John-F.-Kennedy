@@ -8,15 +8,6 @@ grammar JohnFKennedy;
 
 program : (statement)+ EOF;
 
-statement
-    : type IDENTIFIER ('=' expression)? ';'               # DeclareAssignStatement
-    | arrayType IDENTIFIER '[' NUMBER ']' ';'             # DeclareArrayStatement
-    | IDENTIFIER '=' expression ';'                       # AssignStatement
-    | IDENTIFIER '[' expression ']' '=' expression ';'    # ArrayAssignStatement
-    | 'print' expression ';'                              # PrintStatement
-    | 'read' IDENTIFIER ';'                               # ReadStatement
-    ;
-
 type
     : 'int8'      # Int8Type
     | 'int16'     # Int16Type
@@ -53,13 +44,35 @@ multiplyExpression
     | multiplyExpression ('*'|'/') primaryExpression # MultiplyExpr
     ;
 
+matrixType
+    : 'matrix_int8'     # MatrixInt8Type
+    | 'matrix_int16'    # MatrixInt16Type
+    | 'matrix_int32'    # MatrixInt32Type
+    | 'matrix_int'      # MatrixIntType
+    | 'matrix_float16'  # MatrixFloat16Type
+    | 'matrix_float32'  # MatrixFloat32Type
+    | 'matrix_float'    # MatrixFloatType
+    ;
+
+statement
+    : type IDENTIFIER ('=' expression)? ';'                        # DeclareAssignStatement
+    | arrayType IDENTIFIER '[' NUMBER ']' ';'                      # DeclareArrayStatement
+    | matrixType IDENTIFIER '[' NUMBER ']' '[' NUMBER ']' ';'      # DeclareMatrixStatement
+    | IDENTIFIER '=' expression ';'                                # AssignStatement
+    | IDENTIFIER '[' expression ']' '=' expression ';'             # ArrayAssignStatement
+    | IDENTIFIER '[' expression ']' '[' expression ']' '=' expression ';'  # MatrixAssignStatement
+    | 'print' expression ';'                                       # PrintStatement
+    | 'read' IDENTIFIER ';'                                        # ReadStatement
+    ;
+
 primaryExpression
-    : NUMBER                                # NumberExpr
-    | FLOAT_NUMBER                          # FloatExpr
-    | IDENTIFIER                            # IdentifierExpr
-    | IDENTIFIER '[' expression ']'         # ArrayAccessExpr
-    | QSTRING                               # QstringExpr
-    | '(' expression ')'                    # ParenExpr
+    : NUMBER                                         # NumberExpr
+    | FLOAT_NUMBER                                   # FloatExpr
+    | IDENTIFIER                                     # IdentifierExpr
+    | IDENTIFIER '[' expression ']'                  # ArrayAccessExpr
+    | IDENTIFIER '[' expression ']' '[' expression ']'  # MatrixAccessExpr
+    | QSTRING                                        # QstringExpr
+    | '(' expression ')'                             # ParenExpr
     ;
 
 IDENTIFIER : [a-zA-Z_][a-zA-Z_0-9]* ;
