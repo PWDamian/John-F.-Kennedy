@@ -11,42 +11,79 @@ class ASTNode:
 
 
 class Type:
+    # Integer types
     INT8 = "int8"
     INT16 = "int16"
     INT32 = "int32"
-    INT = "int"  # int64
+    INT64 = "int64"
+    INT = "int"  # Alias for INT64 (backward compatibility)
+    
+    # Floating point types
     FLOAT16 = "float16"
     FLOAT32 = "float32"
-    FLOAT = "float"  # float64
+    FLOAT64 = "float64"
+    FLOAT = "float"  # Alias for FLOAT64 (backward compatibility)
+    
+    # Other types
     STRING = "string"
-    ARRAY = "array"  # New array type
+    ARRAY = "array"
 
-    _type_hierarchy = [INT8, INT16, INT32, INT, FLOAT, FLOAT16, FLOAT32, FLOAT]
+    # Type hierarchy for numeric types (from lowest to highest precision)
+    _numeric_hierarchy = [
+        INT8, INT16, INT32, INT64,  # Integer types
+        FLOAT16, FLOAT32, FLOAT64   # Floating point types
+    ]
+
+    # Map backward compatibility types to their internal representations
+    @classmethod
+    def _map_to_internal_type(cls, type_name):
+        if type_name == cls.INT:
+            return cls.INT64
+        elif type_name == cls.FLOAT:
+            return cls.FLOAT64
+        return type_name
 
     @classmethod
     def get_common_type(cls, left_type, right_type):
-        # If either is array, can't determine common type
-        if left_type == Type.ARRAY or right_type == Type.ARRAY:
-            raise ValueError("Cannot determine common type involving arrays")
-        return cls._type_hierarchy[max(cls._type_hierarchy.index(left_type), cls._type_hierarchy.index(right_type))]
+        # Map backward compatibility types to internal types
+        left_type = cls._map_to_internal_type(left_type)
+        right_type = cls._map_to_internal_type(right_type)
+        
+        # If either is array or string, can't determine common type
+        if left_type == Type.ARRAY or right_type == Type.ARRAY or \
+           left_type == Type.STRING or right_type == Type.STRING:
+            raise ValueError("Cannot determine common type involving arrays or strings")
+        
+        # Get indices in hierarchy
+        try:
+            left_idx = cls._numeric_hierarchy.index(left_type)
+            right_idx = cls._numeric_hierarchy.index(right_type)
+        except ValueError:
+            raise ValueError(f"Unknown type in common type determination: {left_type} or {right_type}")
+        
+        # Return the type with higher precision
+        return cls._numeric_hierarchy[max(left_idx, right_idx)]
 
     @classmethod
     def get_ir_type(cls, type):
-        if type == Type.INT8:
+        # Map backward compatibility types
+        type = cls._map_to_internal_type(type)
+        
+        if type == cls.INT8:
             return ir.IntType(8)
-        elif type == Type.INT16:
+        elif type == cls.INT16:
             return ir.IntType(16)
-        elif type == Type.INT32:
+        elif type == cls.INT32:
             return ir.IntType(32)
-        elif type == Type.INT:
+        elif type == cls.INT64:
             return ir.IntType(64)
-        elif type == Type.FLOAT16:
+        elif type == cls.FLOAT16:
             return ir.HalfType()
-        elif type == Type.FLOAT32:
+        elif type == cls.FLOAT32:
             return ir.FloatType()
-        elif type == Type.FLOAT:
+        elif type == cls.FLOAT64:
             return ir.DoubleType()
-        elif type == Type.STRING:
+        elif type == cls.STRING:
             return ir.PointerType(ir.IntType(8))
         else:
             raise ValueError(f"Unsupported type in type get ir: {type}")
@@ -64,8 +101,14 @@ class NumberNode(ASTNode):
     def _get_float_for_value(self, value):
         str_value = str(value)
         if '.' in str_value:
-            return Type.FLOAT32 if len(str_value.split('.')[1]) <= 7 else Type.FLOAT
-        return Type.FLOAT
+            decimal_part = str_value.split('.')[1]
+            if len(decimal_part) <= 3:  # Very small precision, can fit in float16
+                return Type.FLOAT16
+            elif len(decimal_part) <= 7:  # Medium precision, can fit in float32
+                return Type.FLOAT32
+            else:  # High precision, needs float64
+                return Type.FLOAT64
+        return Type.FLOAT64  # Default to highest precision for non-decimal floats
 
     def _get_int_for_value(self, value):
         int_value = int(value)
@@ -76,7 +119,7 @@ class NumberNode(ASTNode):
         elif -2147483648 <= int_value <= 2147483647:
             return Type.INT32
         else:
-            return Type.INT
+            return Type.INT64
 
     def __str__(self):
         return f"Number({self.value}, {self.type})"

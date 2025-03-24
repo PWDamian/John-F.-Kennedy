@@ -87,9 +87,11 @@ class ASTBuilder(JohnFKennedyVisitor):
     def visitInt32Type(self, ctx: JohnFKennedyParser.Int32TypeContext):
         return Type.INT32
 
-    # int64
+    def visitInt64Type(self, ctx: JohnFKennedyParser.Int64TypeContext):
+        return Type.INT64
+
     def visitIntType(self, ctx: JohnFKennedyParser.IntTypeContext):
-        return Type.INT
+        return Type.INT  # Alias for INT64
 
     def visitFloat16Type(self, ctx: JohnFKennedyParser.Float16TypeContext):
         return Type.FLOAT16
@@ -97,9 +99,11 @@ class ASTBuilder(JohnFKennedyVisitor):
     def visitFloat32Type(self, ctx: JohnFKennedyParser.Float32TypeContext):
         return Type.FLOAT32
 
-    # float64
+    def visitFloat64Type(self, ctx: JohnFKennedyParser.Float64TypeContext):
+        return Type.FLOAT64
+
     def visitFloatType(self, ctx: JohnFKennedyParser.FloatTypeContext):
-        return Type.FLOAT
+        return Type.FLOAT  # Alias for FLOAT64
 
     # Array types
     def visitArrayInt8Type(self, ctx: JohnFKennedyParser.ArrayInt8TypeContext):
@@ -111,8 +115,11 @@ class ASTBuilder(JohnFKennedyVisitor):
     def visitArrayInt32Type(self, ctx: JohnFKennedyParser.ArrayInt32TypeContext):
         return "array_int32"
 
+    def visitArrayInt64Type(self, ctx: JohnFKennedyParser.ArrayInt64TypeContext):
+        return "array_int64"
+
     def visitArrayIntType(self, ctx: JohnFKennedyParser.ArrayIntTypeContext):
-        return "array_int"
+        return "array_int"  # Alias for array_int64
 
     def visitArrayFloat16Type(self, ctx: JohnFKennedyParser.ArrayFloat16TypeContext):
         return "array_float16"
@@ -120,8 +127,11 @@ class ASTBuilder(JohnFKennedyVisitor):
     def visitArrayFloat32Type(self, ctx: JohnFKennedyParser.ArrayFloat32TypeContext):
         return "array_float32"
 
+    def visitArrayFloat64Type(self, ctx: JohnFKennedyParser.ArrayFloat64TypeContext):
+        return "array_float64"
+
     def visitArrayFloatType(self, ctx: JohnFKennedyParser.ArrayFloatTypeContext):
-        return "array_float"
+        return "array_float"  # Alias for array_float64
 
     def visitArrayStringType(self, ctx: JohnFKennedyParser.ArrayStringTypeContext):
         return "array_string"
@@ -154,8 +164,11 @@ class ASTBuilder(JohnFKennedyVisitor):
     def visitMatrixInt32Type(self, ctx: JohnFKennedyParser.MatrixInt32TypeContext):
         return "matrix_int32"
 
+    def visitMatrixInt64Type(self, ctx: JohnFKennedyParser.MatrixInt64TypeContext):
+        return "matrix_int64"
+
     def visitMatrixIntType(self, ctx: JohnFKennedyParser.MatrixIntTypeContext):
-        return "matrix_int"
+        return "matrix_int"  # Alias for matrix_int64
 
     def visitMatrixFloat16Type(self, ctx: JohnFKennedyParser.MatrixFloat16TypeContext):
         return "matrix_float16"
@@ -163,5 +176,8 @@ class ASTBuilder(JohnFKennedyVisitor):
     def visitMatrixFloat32Type(self, ctx: JohnFKennedyParser.MatrixFloat32TypeContext):
         return "matrix_float32"
 
+    def visitMatrixFloat64Type(self, ctx: JohnFKennedyParser.MatrixFloat64TypeContext):
+        return "matrix_float64"
+
     def visitMatrixFloatType(self, ctx: JohnFKennedyParser.MatrixFloatTypeContext):
-        return "matrix_float"
+        return "matrix_float"  # Alias for matrix_float64

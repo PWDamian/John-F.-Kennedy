@@ -12,10 +12,12 @@ type
     : 'int8'      # Int8Type
     | 'int16'     # Int16Type
     | 'int32'     # Int32Type
-    | 'int'       # IntType
+    | 'int64'     # Int64Type
+    | 'int'       # IntType      // Alias for int64
     | 'float16'   # Float16Type
     | 'float32'   # Float32Type
-    | 'float'     # FloatType
+    | 'float64'   # Float64Type
+    | 'float'     # FloatType    // Alias for float64
     | 'string'    # StringType
     ;
 
@@ -23,10 +25,12 @@ arrayType
     : 'array_int8'      # ArrayInt8Type
     | 'array_int16'     # ArrayInt16Type
     | 'array_int32'     # ArrayInt32Type
-    | 'array_int'       # ArrayIntType
+    | 'array_int64'     # ArrayInt64Type
+    | 'array_int'       # ArrayIntType     // Alias for array_int64
     | 'array_float16'   # ArrayFloat16Type
     | 'array_float32'   # ArrayFloat32Type
-    | 'array_float'     # ArrayFloatType
+    | 'array_float64'   # ArrayFloat64Type
+    | 'array_float'     # ArrayFloatType   // Alias for array_float64
     | 'array_string'    # ArrayStringType
     ;
 
@@ -48,10 +52,12 @@ matrixType
     : 'matrix_int8'     # MatrixInt8Type
     | 'matrix_int16'    # MatrixInt16Type
     | 'matrix_int32'    # MatrixInt32Type
-    | 'matrix_int'      # MatrixIntType
+    | 'matrix_int64'    # MatrixInt64Type
+    | 'matrix_int'      # MatrixIntType    // Alias for matrix_int64
     | 'matrix_float16'  # MatrixFloat16Type
     | 'matrix_float32'  # MatrixFloat32Type
-    | 'matrix_float'    # MatrixFloatType
+    | 'matrix_float64'  # MatrixFloat64Type
+    | 'matrix_float'    # MatrixFloatType  // Alias for matrix_float64
     ;
 
 statement

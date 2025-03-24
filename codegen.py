@@ -181,8 +181,9 @@ class CodeGenerator:
         if not ptr:
             raise ValueError(f"Variable {node.name} not declared")
 
-        # Get the variable type
+        # Get the variable type (internal representation)
         var_type = self.variable_types.get(node.name)
+        var_type = Type._map_to_internal_type(var_type)
 
         # Generate the expression value
         value = self._generate_expression(node.value)
@@ -222,14 +223,17 @@ class CodeGenerator:
 
                 self.builder.call(self.strcpy, [ptr, value])
         else:
-            llvm_type = Type.get_ir_type(node.type)
+            # Map type to internal representation
+            internal_type = Type._map_to_internal_type(node.type)
+            llvm_type = Type.get_ir_type(internal_type)
             ptr = self.builder.alloca(llvm_type, name=node.name)
             self.variables[node.name] = ptr
-            self.variable_types[node.name] = node.type
+            self.variable_types[node.name] = internal_type  # Store the internal type
 
             if node.value:
                 value = self._generate_expression(node.value)
-                value = self._convert_if_needed(value, node.type)
+                # Convert the value to the target type if needed
+                value = self._convert_if_needed(value, internal_type)
                 self.builder.store(value, ptr)
 
     def _generate_print(self, node):
@@ -244,18 +248,24 @@ class CodeGenerator:
         else:
             type_name = self._get_type_from_value(value)
 
+        # Map to internal type
+        type_name = Type._map_to_internal_type(type_name)
+
         if not self.printf:
             printf_ty = ir.FunctionType(ir.IntType(32), [ir.PointerType(ir.IntType(8))], var_arg=True)
             self.printf = ir.Function(self.module, printf_ty, name="printf")
 
         if type_name == Type.STRING:
-            fmt_ptr = self._get_print_format("%s\0", "format_str_string")
+            fmt_ptr = self._get_print_format("%s\n\0", "format_str_string")
             self.builder.call(self.printf, [fmt_ptr, value])
         elif "int" in type_name:
-            fmt_ptr = self._get_print_format("%d\0", "format_str_int")
+            fmt_ptr = self._get_print_format("%d\n\0", "format_str_int")
             self.builder.call(self.printf, [fmt_ptr, value])
         elif "float" in type_name:
-            fmt_ptr = self._get_print_format("%f\0", "format_str_float")
+            # For float16 and float32, extend to float64 for printing
+            if type_name in [Type.FLOAT16, Type.FLOAT32]:
+                value = self.builder.fpext(value, ir.DoubleType())
+            fmt_ptr = self._get_print_format("%.6f\n\0", "format_str_float")
             self.builder.call(self.printf, [fmt_ptr, value])
 
     def _get_print_format(self, fmt_str, name):
@@ -297,14 +307,18 @@ class CodeGenerator:
                 return ir.Constant(ir.IntType(16), node.value)
             elif node.type == Type.INT32:
                 return ir.Constant(ir.IntType(32), node.value)
-            elif node.type == Type.INT:
+            elif node.type == Type.INT or node.type == Type.INT64:
                 return ir.Constant(ir.IntType(64), node.value)
             elif node.type == Type.FLOAT16:
-                return ir.Constant(ir.HalfType(), node.value)
+                # Convert to double first for better precision
+                double_val = ir.Constant(ir.DoubleType(), float(node.value))
+                return self.builder.fptrunc(double_val, ir.HalfType(), name="float16_const")
             elif node.type == Type.FLOAT32:
-                return ir.Constant(ir.FloatType(), node.value)
-            elif node.type == Type.FLOAT:
-                return ir.Constant(ir.DoubleType(), node.value)
+                # Convert to double first for better precision
+                double_val = ir.Constant(ir.DoubleType(), float(node.value))
+                return self.builder.fptrunc(double_val, ir.FloatType(), name="float32_const")
+            elif node.type == Type.FLOAT or node.type == Type.FLOAT64:
+                return ir.Constant(ir.DoubleType(), float(node.value))
             else:
                 raise ValueError(f"Unsupported type in expr gen: {node.type}")
         elif isinstance(node, VariableNode):
@@ -426,13 +440,13 @@ class CodeGenerator:
         elif value.type is ir.IntType(32):
             return Type.INT32
         elif value.type is ir.IntType(64):
-            return Type.INT
+            return Type.INT  # Return backward compatibility type
         elif value.type is ir.HalfType():
             return Type.FLOAT16
         elif value.type is ir.FloatType():
             return Type.FLOAT32
         elif value.type is ir.DoubleType():
-            return Type.FLOAT
+            return Type.FLOAT  # Return backward compatibility type
         elif isinstance(value.type, ir.PointerType) and value.type.pointee == ir.IntType(8):
             return Type.STRING
         else:
@@ -443,6 +457,10 @@ class CodeGenerator:
         if source_type == target_type:
             return value
 
+        # Map backward compatibility types to their internal representations
+        source_type = Type._map_to_internal_type(source_type)
+        target_type = Type._map_to_internal_type(target_type)
+
         # Handle int to float conversions
         if "int" in source_type and "float" in target_type:
             return self.builder.sitofp(value, Type.get_ir_type(target_type), name="int_to_float")
@@ -452,23 +470,18 @@ class CodeGenerator:
         # Handle float to float conversions
         elif "float" in target_type and "float" in source_type:
             target_ir_type = Type.get_ir_type(target_type)
+            source_ir_type = value.type
 
-            # Fix for HalfType conversions
-            if target_type == Type.FLOAT16:
-                # Any floating point to float16 requires fptrunc
-                return self.builder.fptrunc(value, target_ir_type, name="float_to_half")
-            elif source_type == Type.FLOAT16:
-                # float16 to any larger float requires fpext
-                return self.builder.fpext(value, target_ir_type, name="half_to_float")
+            # Get the precision levels
+            source_precision = Type._numeric_hierarchy.index(source_type)
+            target_precision = Type._numeric_hierarchy.index(target_type)
+
+            if target_precision > source_precision:
+                # Target type has higher precision, so extend
+                return self.builder.fpext(value, target_ir_type, name="float_extend")
             else:
-                # Normal float conversions
-                ttype = Type.get_common_type(source_type, target_type)
-                if ttype == target_type:
-                    # Target type is higher precision, so extend
-                    return self.builder.fpext(value, target_ir_type, name="float_extend")
-                else:
-                    # Target type is lower precision, so truncate
-                    return self.builder.fptrunc(value, target_ir_type, name="float_trunc")
+                # Target type has lower precision, so truncate
+                return self.builder.fptrunc(value, target_ir_type, name="float_trunc")
         # Handle int to int conversions
         elif "int" in target_type and "int" in source_type:
             target_ir_type = Type.get_ir_type(target_type)
@@ -482,7 +495,7 @@ class CodeGenerator:
             else:
                 return value
         else:
-            raise ValueError(f"Semantic error - Illegal assignment of {source_type} to {target_type}")
+            raise ValueError(f"Cannot convert between types {source_type} and {target_type}")
 
     def get_ir(self):
         return str(self.module)
