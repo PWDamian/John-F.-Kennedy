@@ -1,0 +1,8 @@
+int i;
+for (i = 2; i >= 0; i = i - 1;) {
+    print i;
+}
+
+for (int y = 0; y < 3; y = y + 1;) {
+    print y;
+}

@@ -181,3 +181,41 @@ class ASTBuilder(JohnFKennedyVisitor):
 
     def visitMatrixFloatType(self, ctx: JohnFKennedyParser.MatrixFloatTypeContext):
         return "matrix_float"  # Alias for matrix_float64
+
+    def visitPassThroughComparisonExpr(self, ctx: JohnFKennedyParser.PassThroughComparisonExprContext):
+        return self.visit(ctx.addExpression())
+
+    def visitComparisonExpr(self, ctx: JohnFKennedyParser.ComparisonExprContext):
+        left = self.visit(ctx.addExpression(0))
+        op = ctx.getChild(1).getText()
+        right = self.visit(ctx.addExpression(1))
+        return ComparisonNode(left, op, right, ctx.start.line, ctx.start.column)
+
+    def visitIfStatement(self, ctx: JohnFKennedyParser.IfStatementContext):
+        condition = self.visit(ctx.expression())
+        body = [self.visit(stmt) for stmt in ctx.statement()]
+        else_body = [self.visit(stmt) for stmt in ctx.elseStatement().statement()] if ctx.elseStatement() else None
+        return IfNode(condition, body, else_body, ctx.start.line, ctx.start.column)
+
+    def visitForLoop(self, ctx: JohnFKennedyParser.ForLoopContext):
+        # Handle initialization
+        init_is_assign = False
+        if ctx.declareAssignStatement():
+            init = self.visit(ctx.declareAssignStatement())
+        elif ctx.assignStatement():
+            init = self.visit(ctx.assignStatement(0))
+            init_is_assign = True
+        else:
+            init = None
+
+        # Visit condition expression
+        condition = self.visit(ctx.expression())
+
+        # Visit update statement - use index 1 if init used an assignStatement
+        update_index = 1 if init_is_assign else 0
+        update = self.visit(ctx.assignStatement(update_index))
+
+        # Visit loop body statements
+        body = [self.visit(stmt) for stmt in ctx.statement()]
+
+        return ForNode(init, condition, update, body, ctx.start.line, ctx.start.column)

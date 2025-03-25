@@ -34,20 +34,6 @@ arrayType
     | 'array_string'    # ArrayStringType
     ;
 
-expression
-    : addExpression
-    ;
-
-addExpression
-    : multiplyExpression                          # PassThroughAddExpr
-    | addExpression ('+'|'-') multiplyExpression  # AddExpr
-    ;
-
-multiplyExpression
-    : primaryExpression                              # PassThroughMultiplyExpr
-    | multiplyExpression ('*'|'/') primaryExpression # MultiplyExpr
-    ;
-
 matrixType
     : 'matrix_int8'     # MatrixInt8Type
     | 'matrix_int16'    # MatrixInt16Type
@@ -61,14 +47,56 @@ matrixType
     ;
 
 statement
-    : type IDENTIFIER ('=' expression)? ';'                        # DeclareAssignStatement
-    | arrayType IDENTIFIER '[' NUMBER ']' ';'                      # DeclareArrayStatement
-    | matrixType IDENTIFIER '[' NUMBER ']' '[' NUMBER ']' ';'      # DeclareMatrixStatement
-    | IDENTIFIER '=' expression ';'                                # AssignStatement
-    | IDENTIFIER '[' expression ']' '=' expression ';'             # ArrayAssignStatement
-    | IDENTIFIER '[' expression ']' '[' expression ']' '=' expression ';'  # MatrixAssignStatement
-    | 'print' expression ';'                                       # PrintStatement
-    | 'read' IDENTIFIER ';'                                        # ReadStatement
+    : declareAssignStatement
+    | assignStatement
+    | declareArrayStatement
+    | declareMatrixStatement
+    | arrayAssignStatement
+    | matrixAssignStatement
+    | printStatement
+    | readStatement
+    | ifStatement
+    | forLoop
+    ;
+
+declareAssignStatement : type IDENTIFIER ('=' expression)? ';';
+declareArrayStatement : arrayType IDENTIFIER '[' NUMBER ']' ';';
+declareMatrixStatement : matrixType IDENTIFIER '[' NUMBER ']' '[' NUMBER ']' ';';
+assignStatement : IDENTIFIER '=' expression ';';
+arrayAssignStatement : IDENTIFIER '[' expression ']' '=' expression ';';
+matrixAssignStatement : IDENTIFIER '[' expression ']' '[' expression ']' '=' expression ';';
+printStatement : 'print' expression ';';
+readStatement : 'read' IDENTIFIER ';';
+
+ifStatement
+    : 'if' '(' expression ')' '{' statement* '}' elseStatement?
+    ;
+
+elseStatement
+    : 'else' '{' statement* '}'
+    ;
+
+forLoop
+    : 'for' '(' (declareAssignStatement | assignStatement)? expression ';' assignStatement ')' '{' statement* '}'
+    ;
+
+expression
+    : comparisonExpression
+    ;
+
+comparisonExpression
+    : addExpression                                  # PassThroughComparisonExpr
+    | addExpression ('<' | '>' | '<=' | '>=' | '==' | '!=') addExpression  # ComparisonExpr
+    ;
+
+addExpression
+    : multiplyExpression                          # PassThroughAddExpr
+    | addExpression ('+'|'-') multiplyExpression  # AddExpr
+    ;
+
+multiplyExpression
+    : primaryExpression                              # PassThroughMultiplyExpr
+    | multiplyExpression ('*'|'/') primaryExpression # MultiplyExpr
     ;
 
 primaryExpression

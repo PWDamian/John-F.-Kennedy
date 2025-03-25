@@ -17,13 +17,13 @@ class Type:
     INT32 = "int32"
     INT64 = "int64"
     INT = "int"  # Alias for INT64 (backward compatibility)
-    
+
     # Floating point types
     FLOAT16 = "float16"
     FLOAT32 = "float32"
     FLOAT64 = "float64"
     FLOAT = "float"  # Alias for FLOAT64 (backward compatibility)
-    
+
     # Other types
     STRING = "string"
     ARRAY = "array"
@@ -31,7 +31,7 @@ class Type:
     # Type hierarchy for numeric types (from lowest to highest precision)
     _numeric_hierarchy = [
         INT8, INT16, INT32, INT64,  # Integer types
-        FLOAT16, FLOAT32, FLOAT64   # Floating point types
+        FLOAT16, FLOAT32, FLOAT64  # Floating point types
     ]
 
     # Map backward compatibility types to their internal representations
@@ -48,19 +48,19 @@ class Type:
         # Map backward compatibility types to internal types
         left_type = cls._map_to_internal_type(left_type)
         right_type = cls._map_to_internal_type(right_type)
-        
+
         # If either is array or string, can't determine common type
         if left_type == Type.ARRAY or right_type == Type.ARRAY or \
-           left_type == Type.STRING or right_type == Type.STRING:
+                left_type == Type.STRING or right_type == Type.STRING:
             raise ValueError("Cannot determine common type involving arrays or strings")
-        
+
         # Get indices in hierarchy
         try:
             left_idx = cls._numeric_hierarchy.index(left_type)
             right_idx = cls._numeric_hierarchy.index(right_type)
         except ValueError:
             raise ValueError(f"Unknown type in common type determination: {left_type} or {right_type}")
-        
+
         # Return the type with higher precision
         return cls._numeric_hierarchy[max(left_idx, right_idx)]
 
@@ -68,7 +68,7 @@ class Type:
     def get_ir_type(cls, type):
         # Map backward compatibility types
         type = cls._map_to_internal_type(type)
-        
+
         if type == cls.INT8:
             return ir.IntType(8)
         elif type == cls.INT16:
@@ -301,6 +301,34 @@ def print_ast_as_tree(node, indent=0):
         print_ast_as_tree(node.col_index, indent + 2)
         print(f"{prefix}  Value:")
         print_ast_as_tree(node.value, indent + 2)
+    elif isinstance(node, ComparisonNode):
+        print(f"{prefix}Comparison: {node.op}")
+        print(f"{prefix}  Left:")
+        print_ast_as_tree(node.left, indent + 2)
+        print(f"{prefix}  Right:")
+        print_ast_as_tree(node.right, indent + 2)
+    elif isinstance(node, IfNode):
+        print(f"{prefix}If Statement:")
+        print(f"{prefix}  Condition:")
+        print_ast_as_tree(node.condition, indent + 2)
+        print(f"{prefix}  Then Body:")
+        for stmt in node.body:
+            print_ast_as_tree(stmt, indent + 3)
+        if node.else_body:
+            print(f"{prefix}  Else Body:")
+            for stmt in node.else_body:
+                print_ast_as_tree(stmt, indent + 3)
+    elif isinstance(node, ForNode):
+        print(f"{prefix}For Loop:")
+        print(f"{prefix}  Init:")
+        print_ast_as_tree(node.init, indent + 2)
+        print(f"{prefix}  Condition:")
+        print_ast_as_tree(node.condition, indent + 2)
+        print(f"{prefix}  Update:")
+        print_ast_as_tree(node.update, indent + 2)
+        print(f"{prefix}  Body:")
+        for stmt in node.body:
+            print_ast_as_tree(stmt, indent + 3)
     else:
         print(f"{prefix}Unknown node type: {type(node)}")
 
@@ -339,3 +367,37 @@ class MatrixAssignNode(ASTNode):
 
     def __str__(self):
         return f"{self.name}[{self.row_index}][{self.col_index}] = {self.value}"
+
+
+class ComparisonNode(ASTNode):
+    def __init__(self, left, op, right, line: int, column: int):
+        super().__init__(line, column)
+        self.left = left
+        self.op = op
+        self.right = right
+
+    def __str__(self):
+        return f"({self.left} {self.op} {self.right})"
+
+
+class IfNode(ASTNode):
+    def __init__(self, condition, body, else_body, line: int, column: int):
+        super().__init__(line, column)
+        self.condition = condition
+        self.body = body
+        self.else_body = else_body
+
+    def __str__(self):
+        return f"If({self.condition}) {{ {self.body} }} else {{ {self.else_body} }}"
+
+
+class ForNode(ASTNode):
+    def __init__(self, init, condition, update, body, line: int, column: int):
+        super().__init__(line, column)
+        self.init = init
+        self.condition = condition
+        self.update = update
+        self.body = body
+
+    def __str__(self):
+        return f"For({self.init}; {self.condition}; {self.update}) {{ {self.body} }}"

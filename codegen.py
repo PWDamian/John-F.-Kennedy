@@ -4,7 +4,7 @@ from llvmlite import ir
 
 from ast import Type, AssignNode, DeclareAssignNode, PrintNode, ReadNode, NumberNode, VariableNode, BinaryOpNode, \
     StringValueNode, ArrayAccessNode, DeclareArrayNode, ArrayAssignNode, DeclareMatrixNode, MatrixAssignNode, \
-    MatrixAccessNode
+    MatrixAccessNode, IfNode, ForNode, ComparisonNode
 
 
 class CodeGenerator:
@@ -66,6 +66,10 @@ class CodeGenerator:
             self._generate_declare_matrix(node)
         elif isinstance(node, MatrixAssignNode):
             self._generate_matrix_assign(node)
+        elif isinstance(node, IfNode):
+            self._generate_if(node)
+        elif isinstance(node, ForNode):
+            self._generate_for(node)
 
     def _generate_declare_matrix(self, node):
         if node.rows <= 0 or node.cols <= 0:
@@ -431,21 +435,55 @@ class CodeGenerator:
 
             # Load and return the value
             return self.builder.load(element_ptr, f"{node.name}_element")
+        elif isinstance(node, ComparisonNode):
+            left = self._generate_expression(node.left)
+            right = self._generate_expression(node.right)
+            left_type = self._get_type_from_value(left)
+            right_type = self._get_type_from_value(right)
+
+            # Get common type and convert operands
+            result_type = Type.get_common_type(left_type, right_type)
+            left = self._convert_if_needed(left, result_type)
+            right = self._convert_if_needed(right, result_type)
+
+            # Handle integer or float comparisons
+            if "int" in result_type:
+                return {
+                    '<': self.builder.icmp_signed('<', left, right),
+                    '>': self.builder.icmp_signed('>', left, right),
+                    '<=': self.builder.icmp_signed('<=', left, right),
+                    '>=': self.builder.icmp_signed('>=', left, right),
+                    '==': self.builder.icmp_signed('==', left, right),
+                    '!=': self.builder.icmp_signed('!=', left, right)
+                }[node.op]
+            else:
+                return {
+                    '<': self.builder.fcmp_ordered('<', left, right),
+                    '>': self.builder.fcmp_ordered('>', left, right),
+                    '<=': self.builder.fcmp_ordered('<=', left, right),
+                    '>=': self.builder.fcmp_ordered('>=', left, right),
+                    '==': self.builder.fcmp_ordered('==', left, right),
+                    '!=': self.builder.fcmp_ordered('!=', left, right)
+                }[node.op]
 
     def _get_type_from_value(self, value):
-        if value.type is ir.IntType(8):
-            return Type.INT8
-        elif value.type is ir.IntType(16):
-            return Type.INT16
-        elif value.type is ir.IntType(32):
-            return Type.INT32
-        elif value.type is ir.IntType(64):
-            return Type.INT  # Return backward compatibility type
-        elif value.type is ir.HalfType():
+        if isinstance(value.type, ir.IntType):
+            if value.type.width == 1:
+                # Boolean type (i1)
+                return Type.INT8  # Map boolean to int8 for simplicity
+            elif value.type.width == 8:
+                return Type.INT8
+            elif value.type.width == 16:
+                return Type.INT16
+            elif value.type.width == 32:
+                return Type.INT32
+            elif value.type.width == 64:
+                return Type.INT  # Return backward compatibility type
+        elif value.type == ir.HalfType():
             return Type.FLOAT16
-        elif value.type is ir.FloatType():
+        elif value.type == ir.FloatType():
             return Type.FLOAT32
-        elif value.type is ir.DoubleType():
+        elif value.type == ir.DoubleType():
             return Type.FLOAT  # Return backward compatibility type
         elif isinstance(value.type, ir.PointerType) and value.type.pointee == ir.IntType(8):
             return Type.STRING
@@ -499,3 +537,80 @@ class CodeGenerator:
 
     def get_ir(self):
         return str(self.module)
+
+    def _generate_if(self, node):
+        cond_value = self._generate_expression(node.condition)
+
+        # Make sure we have a boolean result (i1 type)
+        if not isinstance(cond_value.type, ir.IntType) or cond_value.type.width != 1:
+            # Convert to boolean if needed - comparing with zero
+            if isinstance(cond_value.type, ir.IntType):
+                zero = ir.Constant(cond_value.type, 0)
+                cond_value = self.builder.icmp_signed('!=', cond_value, zero)
+            elif isinstance(cond_value.type, (ir.FloatType, ir.DoubleType, ir.HalfType)):
+                zero = ir.Constant(cond_value.type, 0)
+                cond_value = self.builder.fcmp_ordered('!=', cond_value, zero)
+            else:
+                # For other types, just ensure we have a boolean
+                cond_value = self.builder.trunc(cond_value, ir.IntType(1))
+
+        then_block = self.func.append_basic_block(name="if_then")
+        else_block = self.func.append_basic_block(name="if_else") if node.else_body else None
+        end_block = self.func.append_basic_block(name="if_end")
+
+        self.builder.cbranch(cond_value, then_block, else_block if else_block else end_block)
+
+        # Generate then block
+        self.builder.position_at_end(then_block)
+        for stmt in node.body:
+            self._generate_node(stmt)
+        self.builder.branch(end_block)
+
+        # Generate else block if exists
+        if else_block:
+            self.builder.position_at_end(else_block)
+            for stmt in node.else_body:
+                self._generate_node(stmt)
+            self.builder.branch(end_block)
+
+        # Move to end block
+        self.builder.position_at_end(end_block)
+
+    def _generate_for(self, node):
+        # Generate initialization (e.g., int i = 0)
+        self._generate_node(node.init)
+
+        cond_block = self.func.append_basic_block(name="for_cond")
+        body_block = self.func.append_basic_block(name="for_body")
+        update_block = self.func.append_basic_block(name="for_update")
+        end_block = self.func.append_basic_block(name="for_end")
+
+        self.builder.branch(cond_block)
+
+        # Generate the loop condition
+        self.builder.position_at_end(cond_block)
+        cond_value = self._generate_expression(node.condition)
+
+        # Convert condition to boolean by comparing with zero
+        if isinstance(cond_value.type, ir.IntType):
+            zero = ir.Constant(cond_value.type, 0)
+            cond_value = self.builder.icmp_signed('!=', cond_value, zero)
+        elif isinstance(cond_value.type, (ir.FloatType, ir.DoubleType, ir.HalfType)):
+            zero = ir.Constant(cond_value.type, 0)
+            cond_value = self.builder.fcmp_ordered('!=', cond_value, zero)
+
+        self.builder.cbranch(cond_value, body_block, end_block)
+
+        # Generate the body of the loop
+        self.builder.position_at_end(body_block)
+        for stmt in node.body:
+            self._generate_node(stmt)
+        self.builder.branch(update_block)
+
+        # Generate the update (e.g., i = i + 1)
+        self.builder.position_at_end(update_block)
+        self._generate_node(node.update)
+        self.builder.branch(cond_block)
+
+        # End of the loop
+        self.builder.position_at_end(end_block)

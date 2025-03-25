@@ -1,0 +1,15 @@
+int x = 5;
+int y = 10;
+
+if (x < y) {
+    print "x is less than y";
+}
+
+float a = 5;
+float b = 10;
+
+if (a > b) {
+    print "a is less than b";
+} else {
+    print "b is greater or equal to a";
+}
