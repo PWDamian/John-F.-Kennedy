@@ -102,23 +102,10 @@ class CodeGenerator:
             raise ValueError(f"Unknown element type for matrix {node.name}")
 
         # Get row index
-        row_index = self._generate_expression(node.row_index)
-        if not isinstance(row_index.type, ir.IntType):
-            raise ValueError(f"Matrix row index must be of integer type, got {row_index.type}")
+        row_index = self._normalize_index(self._generate_expression(node.row_index))
 
         # Get column index
-        col_index = self._generate_expression(node.col_index)
-        if not isinstance(col_index.type, ir.IntType):
-            raise ValueError(f"Matrix column index must be of integer type, got {col_index.type}")
-
-        # Convert indices to i32 if needed
-        if row_index.type.width != 32:
-            row_index = self.builder.trunc(row_index, ir.IntType(32)) if row_index.type.width > 32 \
-                else self.builder.sext(row_index, ir.IntType(32))
-
-        if col_index.type.width != 32:
-            col_index = self.builder.trunc(col_index, ir.IntType(32)) if col_index.type.width > 32 \
-                else self.builder.sext(col_index, ir.IntType(32))
+        col_index = self._normalize_index(self._generate_expression(node.col_index))
 
         # Get element pointer (need to go through two levels of arrays)
         indices = [
@@ -145,13 +132,7 @@ class CodeGenerator:
 
         # Get index
         index_value = self._generate_expression(node.index)
-        if not isinstance(index_value.type, ir.IntType):
-            raise ValueError(f"Array index must be of integer type, got {index_value.type}")
-
-        # Convert index to i32 if needed
-        if index_value.type.width != 32:
-            index_value = self.builder.trunc(index_value, ir.IntType(32)) if index_value.type.width > 32 \
-                else self.builder.sext(index_value, ir.IntType(32))
+        index_value = self._normalize_index(index_value)
 
         # Get element pointer
         element_ptr = self.builder.gep(array_ptr, [ir.Constant(ir.IntType(32), 0), index_value])
@@ -614,3 +595,11 @@ class CodeGenerator:
 
         # End of the loop
         self.builder.position_at_end(end_block)
+
+    def _normalize_index(self, index_value):
+        if not isinstance(index_value.type, ir.IntType):
+            raise ValueError(f"Index must be integer, got {index_value.type}")
+        if index_value.type.width != 32:
+            index_value = self.builder.trunc(index_value, ir.IntType(32)) if index_value.type.width > 32 \
+                else self.builder.sext(index_value, ir.IntType(32))
+        return index_value

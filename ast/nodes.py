@@ -1,4 +1,14 @@
-from llvmlite import ir
+from .types import Type
+
+OPERATOR_PRECEDENCE = {
+    '+': 1,
+    '-': 1,
+    '*': 2,
+    '/': 2,
+    '^': 3,
+    '(': 0,
+    ')': 0
+}
 
 
 class ASTNode:
@@ -8,85 +18,6 @@ class ASTNode:
 
     def __repr__(self):
         return self.__str__()
-
-
-class Type:
-    # Integer types
-    INT8 = "int8"
-    INT16 = "int16"
-    INT32 = "int32"
-    INT64 = "int64"
-    INT = "int"  # Alias for INT64 (backward compatibility)
-
-    # Floating point types
-    FLOAT16 = "float16"
-    FLOAT32 = "float32"
-    FLOAT64 = "float64"
-    FLOAT = "float"  # Alias for FLOAT64 (backward compatibility)
-
-    # Other types
-    STRING = "string"
-    ARRAY = "array"
-
-    # Type hierarchy for numeric types (from lowest to highest precision)
-    _numeric_hierarchy = [
-        INT8, INT16, INT32, INT64,  # Integer types
-        FLOAT16, FLOAT32, FLOAT64  # Floating point types
-    ]
-
-    # Map backward compatibility types to their internal representations
-    @classmethod
-    def _map_to_internal_type(cls, type_name):
-        if type_name == cls.INT:
-            return cls.INT64
-        elif type_name == cls.FLOAT:
-            return cls.FLOAT64
-        return type_name
-
-    @classmethod
-    def get_common_type(cls, left_type, right_type):
-        # Map backward compatibility types to internal types
-        left_type = cls._map_to_internal_type(left_type)
-        right_type = cls._map_to_internal_type(right_type)
-
-        # If either is array or string, can't determine common type
-        if left_type == Type.ARRAY or right_type == Type.ARRAY or \
-                left_type == Type.STRING or right_type == Type.STRING:
-            raise ValueError("Cannot determine common type involving arrays or strings")
-
-        # Get indices in hierarchy
-        try:
-            left_idx = cls._numeric_hierarchy.index(left_type)
-            right_idx = cls._numeric_hierarchy.index(right_type)
-        except ValueError:
-            raise ValueError(f"Unknown type in common type determination: {left_type} or {right_type}")
-
-        # Return the type with higher precision
-        return cls._numeric_hierarchy[max(left_idx, right_idx)]
-
-    @classmethod
-    def get_ir_type(cls, type):
-        # Map backward compatibility types
-        type = cls._map_to_internal_type(type)
-
-        if type == cls.INT8:
-            return ir.IntType(8)
-        elif type == cls.INT16:
-            return ir.IntType(16)
-        elif type == cls.INT32:
-            return ir.IntType(32)
-        elif type == cls.INT64:
-            return ir.IntType(64)
-        elif type == cls.FLOAT16:
-            return ir.HalfType()
-        elif type == cls.FLOAT32:
-            return ir.FloatType()
-        elif type == cls.FLOAT64:
-            return ir.DoubleType()
-        elif type == cls.STRING:
-            return ir.PointerType(ir.IntType(8))
-        else:
-            raise ValueError(f"Unsupported type in type get ir: {type}")
 
 
 class NumberNode(ASTNode):
@@ -108,7 +39,7 @@ class NumberNode(ASTNode):
                 return Type.FLOAT32
             else:  # High precision, needs float64
                 return Type.FLOAT64
-        return Type.FLOAT64  # Default to highest precision for non-decimal floats
+        return Type.FLOAT64  # Default to the highest precision for non-decimal floats
 
     def _get_int_for_value(self, value):
         int_value = int(value)
@@ -153,15 +84,15 @@ class ArrayAccessNode(ASTNode):
         return f"ArrayAccess({self.name}[{self.index}])"
 
 
-OPERATOR_PRECEDENCE = {
-    '+': 1,
-    '-': 1,
-    '*': 2,
-    '/': 2,
-    '^': 3,
-    '(': 0,
-    ')': 0
-}
+class MatrixAccessNode(ASTNode):
+    def __init__(self, name, row_index, col_index, line: int, column: int):
+        super().__init__(line, column)
+        self.name = name
+        self.row_index = row_index
+        self.col_index = col_index
+
+    def __str__(self):
+        return f"MatrixAccess({self.name}[{self.row_index}][{self.col_index}])"
 
 
 class BinaryOpNode(ASTNode):
@@ -171,6 +102,17 @@ class BinaryOpNode(ASTNode):
         self.op = op
         self.right = right
         self.precedence = OPERATOR_PRECEDENCE.get(op, 0)
+
+    def __str__(self):
+        return f"({self.left} {self.op} {self.right})"
+
+
+class ComparisonNode(ASTNode):
+    def __init__(self, left, op, right, line: int, column: int):
+        super().__init__(line, column)
+        self.left = left
+        self.op = op
+        self.right = right
 
     def __str__(self):
         return f"({self.left} {self.op} {self.right})"
@@ -197,6 +139,18 @@ class ArrayAssignNode(ASTNode):
         return f"{self.name}[{self.index}] = {self.value}"
 
 
+class MatrixAssignNode(ASTNode):
+    def __init__(self, name, row_index, col_index, value, line: int, column: int):
+        super().__init__(line, column)
+        self.name = name
+        self.row_index = row_index
+        self.col_index = col_index
+        self.value = value
+
+    def __str__(self):
+        return f"{self.name}[{self.row_index}][{self.col_index}] = {self.value}"
+
+
 class DeclareAssignNode(ASTNode):
     def __init__(self, type_name, name, line: int, column: int, value=None):
         super().__init__(line, column)
@@ -220,6 +174,19 @@ class DeclareArrayNode(ASTNode):
         return f"{self.type} {self.name}[{self.size}]"
 
 
+class DeclareMatrixNode(ASTNode):
+    def __init__(self, type_name, name, rows, cols, line: int, column: int):
+        super().__init__(line, column)
+        self.type = type_name
+        self.name = name
+        self.rows = rows
+        self.cols = cols
+        self.element_type = type_name.split('_')[1] if '_' in type_name else Type.INT
+
+    def __str__(self):
+        return f"{self.type} {self.name}[{self.rows}][{self.cols}]"
+
+
 class ReadNode(ASTNode):
     def __init__(self, name, line: int, column: int):
         super().__init__(line, column)
@@ -236,6 +203,29 @@ class PrintNode(ASTNode):
 
     def __str__(self):
         return f"print {self.expression}"
+
+
+class IfNode(ASTNode):
+    def __init__(self, condition, body, else_body, line: int, column: int):
+        super().__init__(line, column)
+        self.condition = condition
+        self.body = body
+        self.else_body = else_body
+
+    def __str__(self):
+        return f"If({self.condition}) {{ {self.body} }} else {{ {self.else_body} }}"
+
+
+class ForNode(ASTNode):
+    def __init__(self, init, condition, update, body, line: int, column: int):
+        super().__init__(line, column)
+        self.init = init
+        self.condition = condition
+        self.update = update
+        self.body = body
+
+    def __str__(self):
+        return f"For({self.init}; {self.condition}; {self.update}) {{ {self.body} }}"
 
 
 def print_ast_as_tree(node, indent=0):
@@ -331,73 +321,3 @@ def print_ast_as_tree(node, indent=0):
             print_ast_as_tree(stmt, indent + 3)
     else:
         print(f"{prefix}Unknown node type: {type(node)}")
-
-
-class MatrixAccessNode(ASTNode):
-    def __init__(self, name, row_index, col_index, line: int, column: int):
-        super().__init__(line, column)
-        self.name = name
-        self.row_index = row_index
-        self.col_index = col_index
-
-    def __str__(self):
-        return f"MatrixAccess({self.name}[{self.row_index}][{self.col_index}])"
-
-
-class DeclareMatrixNode(ASTNode):
-    def __init__(self, type_name, name, rows, cols, line: int, column: int):
-        super().__init__(line, column)
-        self.type = type_name
-        self.name = name
-        self.rows = rows
-        self.cols = cols
-        self.element_type = type_name.split('_')[1] if '_' in type_name else Type.INT
-
-    def __str__(self):
-        return f"{self.type} {self.name}[{self.rows}][{self.cols}]"
-
-
-class MatrixAssignNode(ASTNode):
-    def __init__(self, name, row_index, col_index, value, line: int, column: int):
-        super().__init__(line, column)
-        self.name = name
-        self.row_index = row_index
-        self.col_index = col_index
-        self.value = value
-
-    def __str__(self):
-        return f"{self.name}[{self.row_index}][{self.col_index}] = {self.value}"
-
-
-class ComparisonNode(ASTNode):
-    def __init__(self, left, op, right, line: int, column: int):
-        super().__init__(line, column)
-        self.left = left
-        self.op = op
-        self.right = right
-
-    def __str__(self):
-        return f"({self.left} {self.op} {self.right})"
-
-
-class IfNode(ASTNode):
-    def __init__(self, condition, body, else_body, line: int, column: int):
-        super().__init__(line, column)
-        self.condition = condition
-        self.body = body
-        self.else_body = else_body
-
-    def __str__(self):
-        return f"If({self.condition}) {{ {self.body} }} else {{ {self.else_body} }}"
-
-
-class ForNode(ASTNode):
-    def __init__(self, init, condition, update, body, line: int, column: int):
-        super().__init__(line, column)
-        self.init = init
-        self.condition = condition
-        self.update = update
-        self.body = body
-
-    def __str__(self):
-        return f"For({self.init}; {self.condition}; {self.update}) {{ {self.body} }}"
