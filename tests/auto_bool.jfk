@@ -12,7 +12,7 @@ bool b4 = 5 > 10;
 print b3;
 print b4;
 
-// Test boolean in if statements
+// Test boolean in if statements 
 if (b1) {
     print 42;
 }
