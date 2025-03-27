@@ -30,15 +30,6 @@ class NumberNode(ASTNode):
             self.type = self._get_int_for_value(value)
 
     def _get_float_for_value(self, value):
-        str_value = str(value)
-        if '.' in str_value:
-            decimal_part = str_value.split('.')[1]
-            if len(decimal_part) <= 3:  # Very small precision, can fit in float16
-                return Type.FLOAT16
-            elif len(decimal_part) <= 7:  # Medium precision, can fit in float32
-                return Type.FLOAT32
-            else:  # High precision, needs float64
-                return Type.FLOAT64
         return Type.FLOAT64  # Default to the highest precision for non-decimal floats
 
     def _get_int_for_value(self, value):
