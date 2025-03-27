@@ -1,3 +1,4 @@
+from ast2.nodes import BooleanNode
 from build.JohnFKennedyParser import JohnFKennedyParser
 from build.JohnFKennedyVisitor import JohnFKennedyVisitor
 
@@ -43,6 +44,10 @@ class ASTBuilder(JohnFKennedyVisitor):
     def visitFloatExpr(self, ctx: JohnFKennedyParser.FloatExprContext):
         return NumberNode(float(ctx.FLOAT_NUMBER().getText()), ctx.start.line, ctx.start.column)
 
+    def visitBooleanExpr(self, ctx: JohnFKennedyParser.BooleanExprContext):
+        value = ctx.BOOLEAN_LITERAL().getText()
+        return BooleanNode(value == 'true', ctx.start.line, ctx.start.column)
+
     def visitIdentifierExpr(self, ctx: JohnFKennedyParser.IdentifierExprContext):
         return VariableNode(ctx.IDENTIFIER().getText(), ctx.start.line, ctx.start.column)
 
@@ -77,6 +82,9 @@ class ASTBuilder(JohnFKennedyVisitor):
 
     def visitStringType(self, ctx: JohnFKennedyParser.StringTypeContext):
         return Type.STRING
+
+    def visitBoolType(self, ctx: JohnFKennedyParser.BoolTypeContext):
+        return Type.BOOL
 
     def visitInt8Type(self, ctx: JohnFKennedyParser.Int8TypeContext):
         return Type.INT8
@@ -136,6 +144,9 @@ class ASTBuilder(JohnFKennedyVisitor):
     def visitArrayStringType(self, ctx: JohnFKennedyParser.ArrayStringTypeContext):
         return "array_string"
 
+    def visitArrayBoolType(self, ctx: JohnFKennedyParser.ArrayBoolTypeContext):
+        return "array_bool"
+
     def visitDeclareMatrixStatement(self, ctx: JohnFKennedyParser.DeclareMatrixStatementContext):
         type_name = self.visit(ctx.matrixType())
         rows = int(ctx.NUMBER(0).getText())
@@ -181,6 +192,9 @@ class ASTBuilder(JohnFKennedyVisitor):
 
     def visitMatrixFloatType(self, ctx: JohnFKennedyParser.MatrixFloatTypeContext):
         return "matrix_float"  # Alias for matrix_float64
+
+    def visitMatrixBoolType(self, ctx: JohnFKennedyParser.MatrixBoolTypeContext):
+        return "matrix_bool"
 
     def visitPassThroughComparisonExpr(self, ctx: JohnFKennedyParser.PassThroughComparisonExprContext):
         return self.visit(ctx.addExpression())

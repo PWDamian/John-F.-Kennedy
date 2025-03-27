@@ -18,10 +18,11 @@ class Type:
     # Other types
     STRING = "string"
     ARRAY = "array"
+    BOOL = "bool"  # Boolean type
 
     # Type hierarchy for numeric types (from lowest to highest precision)
     _numeric_hierarchy = [
-        INT8, INT16, INT32, INT64,  # Integer types
+        BOOL, INT8, INT16, INT32, INT64,  # Integer types
         FLOAT16, FLOAT32, FLOAT64  # Floating point types
     ]
 
@@ -58,7 +59,9 @@ class Type:
     def get_ir_type(cls, type):
         type = cls._map_to_internal_type(type)
 
-        if type == cls.INT8:
+        if type == cls.BOOL:
+            return ir.IntType(1)
+        elif type == cls.INT8:
             return ir.IntType(8)
         elif type == cls.INT16:
             return ir.IntType(16)

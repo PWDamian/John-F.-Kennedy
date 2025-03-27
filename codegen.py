@@ -3,6 +3,7 @@ import uuid
 
 from llvmlite import ir
 
+from ast2.nodes import BooleanNode
 from ast2 import Type, AssignNode, DeclareAssignNode, PrintNode, ReadNode, NumberNode, VariableNode, BinaryOpNode, \
     StringValueNode, ArrayAccessNode, DeclareArrayNode, ArrayAssignNode, DeclareMatrixNode, MatrixAssignNode, \
     MatrixAccessNode, IfNode, ForNode, ComparisonNode
@@ -23,6 +24,7 @@ class CodeGenerator:
         self.format_str_int = None
         self.format_str_float = None
         self.format_str_string = None
+        self.format_str_bool = None
         self.scan_format_int = None
         self.scan_format_float = None
         self.scan_format_string = None
@@ -244,6 +246,33 @@ class CodeGenerator:
         if type_name == Type.STRING:
             fmt_ptr = self._get_print_format("%s\n\0", "format_str_string")
             self.builder.call(self.printf, [fmt_ptr, value])
+        elif type_name == Type.BOOL:
+            # For boolean values, first convert to i8 to match "%s" format
+            # Use conditional select to choose between "true" and "false" strings
+            if not hasattr(self, 'true_str'):
+                true_data = bytearray("true\0", "utf8")
+                true_arr_ty = ir.ArrayType(ir.IntType(8), len(true_data))
+                self.true_str = ir.GlobalVariable(self.module, true_arr_ty, name="true_str")
+                self.true_str.initializer = ir.Constant(true_arr_ty, true_data)
+                self.true_str.global_constant = True
+                
+                false_data = bytearray("false\0", "utf8")
+                false_arr_ty = ir.ArrayType(ir.IntType(8), len(false_data))
+                self.false_str = ir.GlobalVariable(self.module, false_arr_ty, name="false_str")
+                self.false_str.initializer = ir.Constant(false_arr_ty, false_data)
+                self.false_str.global_constant = True
+            
+            # Convert i1 to i8 for comparison
+            bool_i8 = self.builder.zext(value, ir.IntType(8))
+            
+            # Select the appropriate string based on the boolean value
+            true_ptr = self.builder.bitcast(self.true_str, ir.PointerType(ir.IntType(8)))
+            false_ptr = self.builder.bitcast(self.false_str, ir.PointerType(ir.IntType(8)))
+            bool_str = self.builder.select(value, true_ptr, false_ptr)
+            
+            # Print the boolean value as a string
+            fmt_ptr = self._get_print_format("%s\n\0", "format_str_bool")
+            self.builder.call(self.printf, [fmt_ptr, bool_str])
         elif "int" in type_name:
             fmt_ptr = self._get_print_format("%d\n\0", "format_str_int")
             self.builder.call(self.printf, [fmt_ptr, value])
@@ -310,6 +339,9 @@ class CodeGenerator:
                 return ir.Constant(ir.DoubleType(), float_val)
             else:
                 raise ValueError(f"Unsupported type in expr gen: {node.type}")
+        elif isinstance(node, BooleanNode):
+            # Handle boolean literals (true/false)
+            return ir.Constant(ir.IntType(1), 1 if node.value else 0)
         elif isinstance(node, VariableNode):
             ptr = self.variables.get(node.name)
             if not ptr:
@@ -455,7 +487,7 @@ class CodeGenerator:
         if isinstance(value.type, ir.IntType):
             if value.type.width == 1:
                 # Boolean type (i1)
-                return Type.INT8  # Map boolean to int8 for simplicity
+                return Type.BOOL  # Now returning BOOL type for i1
             elif value.type.width == 8:
                 return Type.INT8
             elif value.type.width == 16:

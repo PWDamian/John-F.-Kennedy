@@ -19,6 +19,7 @@ type
     | 'float64'   # Float64Type
     | 'float'     # FloatType    // Alias for float64
     | 'string'    # StringType
+    | 'bool'      # BoolType     // Boolean type
     ;
 
 arrayType
@@ -32,6 +33,7 @@ arrayType
     | 'array_float64'   # ArrayFloat64Type
     | 'array_float'     # ArrayFloatType   // Alias for array_float64
     | 'array_string'    # ArrayStringType
+    | 'array_bool'      # ArrayBoolType    // Array of booleans
     ;
 
 matrixType
@@ -44,6 +46,7 @@ matrixType
     | 'matrix_float32'  # MatrixFloat32Type
     | 'matrix_float64'  # MatrixFloat64Type
     | 'matrix_float'    # MatrixFloatType  // Alias for matrix_float64
+    | 'matrix_bool'     # MatrixBoolType   // Matrix of booleans
     ;
 
 statement
@@ -102,6 +105,7 @@ multiplyExpression
 primaryExpression
     : NUMBER                                         # NumberExpr
     | FLOAT_NUMBER                                   # FloatExpr
+    | BOOLEAN_LITERAL                                # BooleanExpr
     | IDENTIFIER                                     # IdentifierExpr
     | IDENTIFIER '[' expression ']'                  # ArrayAccessExpr
     | IDENTIFIER '[' expression ']' '[' expression ']'  # MatrixAccessExpr
@@ -109,8 +113,12 @@ primaryExpression
     | '(' expression ')'                             # ParenExpr
     ;
 
+
+
+BOOLEAN_LITERAL : 'true' | 'false';
 IDENTIFIER : [a-zA-Z_][a-zA-Z_0-9]* ;
 NUMBER : [0-9]+ ;
 FLOAT_NUMBER : [0-9]+'.'[0-9]+ ;
 WS : [ \t\r\n]+ -> skip ;
+CMT : '//' ~( '\r' | '\n' )* -> skip;
 QSTRING : '"'([a-zA-Z0-9`~!@#$%^&*()_+\-=:;"'<>,.?/|] | ' ')*'"';

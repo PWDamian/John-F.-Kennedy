@@ -47,6 +47,16 @@ class NumberNode(ASTNode):
         return f"Number({self.value}, {self.type})"
 
 
+class BooleanNode(ASTNode):
+    def __init__(self, value, line: int, column: int):
+        super().__init__(line, column)
+        self.value = value
+        self.type = Type.BOOL
+
+    def __str__(self):
+        return f"Boolean({'true' if self.value else 'false'})"
+
+
 class StringValueNode(ASTNode):
     def __init__(self, value, line: int, column: int):
         super().__init__(line, column)
@@ -228,6 +238,8 @@ def print_ast_as_tree(node, indent=0):
             print_ast_as_tree(child, indent + 1)
     elif isinstance(node, NumberNode):
         print(f"{prefix}Number: {node.value} ({node.type})")
+    elif isinstance(node, BooleanNode):
+        print(f"{prefix}Boolean: {'true' if node.value else 'false'}")
     elif isinstance(node, StringValueNode):
         print(f"{prefix}String: \"{node.value}\"")
     elif isinstance(node, VariableNode):
