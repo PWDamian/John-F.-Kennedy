@@ -377,12 +377,17 @@ class CodeGenerator:
                     '/': self.builder.fdiv
                 }[node.op](left, right, name="float_op")
         elif isinstance(node, LogicalOpNode):
+            # Use a different short-circuit implementation based on the operator
+            self.block_counter += 1
+            op_id = self.block_counter
+            
             if node.op == '&&':
-                return self._non_short_circuit_logical_op(node, lambda l, r: self.builder.and_(l, r, name="and_result"))
+                return self._generate_lazy_and(node, op_id)
             elif node.op == '||':
-                return self._non_short_circuit_logical_op(node, lambda l, r: self.builder.or_(l, r, name="or_result"))
+                return self._generate_lazy_or(node, op_id)
             elif node.op == '^':
-                return self._non_short_circuit_logical_op(node, lambda l, r: self.builder.xor(l, r, name="xor_result"))
+                # XOR doesn't need short-circuit
+                return self._generate_direct_logical_op(node, lambda l, r: self.builder.xor(l, r, f"xor_result_{op_id}"))
             else:
                 raise ValueError(f"Unknown logical operator: {node.op}")
         elif isinstance(node, LogicalNotNode):
@@ -504,23 +509,110 @@ class CodeGenerator:
                     '!=': self.builder.fcmp_ordered('!=', left, right)
                 }[node.op]
 
-    def _non_short_circuit_logical_op(self, node, op_func):
-        """Evaluate both expressions and apply the logical operation.
+    def _generate_lazy_and(self, node, op_id):
+        """Generate code for short-circuit AND (&&)."""
+        # Create an alloca to store the result
+        result_ptr = self.builder.alloca(ir.IntType(1), name=f"and_result_ptr_{op_id}")
         
-        This is a simpler implementation without short-circuit evaluation,
-        which avoids block and PHI node complexities that can cause verification errors.
-        """
-        # Generate left expression
+        # Evaluate left operand
         left = self._generate_expression(node.left)
         
-        # Ensure left is boolean type
+        # Convert to boolean type if needed
         if not isinstance(left.type, ir.IntType) or left.type.width != 1:
             left = self._to_boolean(left)
         
-        # Generate right expression 
+        # Create basic blocks
+        eval_right_block = self.func.append_basic_block(name=f"and_eval_right_{op_id}")
+        merge_block = self.func.append_basic_block(name=f"and_merge_{op_id}")
+        
+        # Save the current block before branching
+        current_block = self.builder.block
+        
+        # If left is false, set result to false and skip right evaluation
+        self.builder.cbranch(left, eval_right_block, merge_block)
+        
+        # Position at evaluate right block
+        self.builder.position_at_end(eval_right_block)
+        # Evaluate right operand
+        right = self._generate_expression(node.right)
+        # Convert to boolean if needed
+        if not isinstance(right.type, ir.IntType) or right.type.width != 1:
+            right = self._to_boolean(right)
+        # Branch to merge block
+        right_block = self.builder.block
+        self.builder.branch(merge_block)
+        
+        # Position at merge block
+        self.builder.position_at_end(merge_block)
+        
+        # Use phi node to select the right value based on which branch we came from
+        phi = self.builder.phi(ir.IntType(1), name=f"and_phi_{op_id}")
+        phi.add_incoming(ir.Constant(ir.IntType(1), 0), current_block)
+        phi.add_incoming(right, right_block)
+        
+        # Store the result
+        self.builder.store(phi, result_ptr)
+        
+        # Return loaded result
+        return self.builder.load(result_ptr, name=f"and_result_{op_id}")
+
+    def _generate_lazy_or(self, node, op_id):
+        """Generate code for short-circuit OR (||)."""
+        # Create an alloca to store the result
+        result_ptr = self.builder.alloca(ir.IntType(1), name=f"or_result_ptr_{op_id}")
+        
+        # Evaluate left operand
+        left = self._generate_expression(node.left)
+        
+        # Convert to boolean type if needed
+        if not isinstance(left.type, ir.IntType) or left.type.width != 1:
+            left = self._to_boolean(left)
+        
+        # Create basic blocks
+        eval_right_block = self.func.append_basic_block(name=f"or_eval_right_{op_id}")
+        merge_block = self.func.append_basic_block(name=f"or_merge_{op_id}")
+        
+        # Save the current block before branching
+        current_block = self.builder.block
+        
+        # If left is true, set result to true and skip right evaluation
+        self.builder.cbranch(left, merge_block, eval_right_block)
+        
+        # Position at evaluate right block
+        self.builder.position_at_end(eval_right_block)
+        # Evaluate right operand
+        right = self._generate_expression(node.right)
+        # Convert to boolean if needed
+        if not isinstance(right.type, ir.IntType) or right.type.width != 1:
+            right = self._to_boolean(right)
+        # Branch to merge block
+        right_block = self.builder.block
+        self.builder.branch(merge_block)
+        
+        # Position at merge block
+        self.builder.position_at_end(merge_block)
+        
+        # Use phi node to select the right value based on which branch we came from
+        phi = self.builder.phi(ir.IntType(1), name=f"or_phi_{op_id}")
+        phi.add_incoming(ir.Constant(ir.IntType(1), 1), current_block)
+        phi.add_incoming(right, right_block)
+        
+        # Store the result
+        self.builder.store(phi, result_ptr)
+        
+        # Return loaded result
+        return self.builder.load(result_ptr, name=f"or_result_{op_id}")
+
+    def _generate_direct_logical_op(self, node, op_func):
+        """Generate code for direct (non-short-circuit) logical operations (used for XOR)"""
+        # Generate both expressions
+        left = self._generate_expression(node.left)
         right = self._generate_expression(node.right)
         
-        # Ensure right is boolean type
+        # Ensure they are boolean types
+        if not isinstance(left.type, ir.IntType) or left.type.width != 1:
+            left = self._to_boolean(left)
+        
         if not isinstance(right.type, ir.IntType) or right.type.width != 1:
             right = self._to_boolean(right)
         
