@@ -36,7 +36,7 @@ A simple programming language compiler implemented in Python, using ANTLR4 for p
 
 - **Show AST:**
     ```sh
-    python compiler.py --show-ast
+    python compiler.py --show-ast2
     ```
 
 - **Show LLVM IR:**

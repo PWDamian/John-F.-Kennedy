@@ -1,8 +1,9 @@
+import struct
 import uuid
 
 from llvmlite import ir
 
-from ast import Type, AssignNode, DeclareAssignNode, PrintNode, ReadNode, NumberNode, VariableNode, BinaryOpNode, \
+from ast2 import Type, AssignNode, DeclareAssignNode, PrintNode, ReadNode, NumberNode, VariableNode, BinaryOpNode, \
     StringValueNode, ArrayAccessNode, DeclareArrayNode, ArrayAssignNode, DeclareMatrixNode, MatrixAssignNode, \
     MatrixAccessNode, IfNode, ForNode, ComparisonNode
 
@@ -250,7 +251,7 @@ class CodeGenerator:
             # For float16 and float32, extend to float64 for printing
             if type_name in [Type.FLOAT16, Type.FLOAT32]:
                 value = self.builder.fpext(value, ir.DoubleType())
-            fmt_ptr = self._get_print_format("%.6f\n\0", "format_str_float")
+            fmt_ptr = self._get_print_format("%.49f\n\0", "format_str_float")
             self.builder.call(self.printf, [fmt_ptr, value])
 
     def _get_print_format(self, fmt_str, name):
@@ -295,15 +296,18 @@ class CodeGenerator:
             elif node.type == Type.INT or node.type == Type.INT64:
                 return ir.Constant(ir.IntType(64), node.value)
             elif node.type == Type.FLOAT16:
-                # Convert to double first for better precision
-                double_val = ir.Constant(ir.DoubleType(), float(node.value))
-                return self.builder.fptrunc(double_val, ir.HalfType(), name="float16_const")
+                # For float16, convert the value directly to binary representation
+                # to ensure exact values
+                float_val = struct.unpack('e', struct.pack('e', node.value))[0]
+                return ir.Constant(ir.HalfType(), float_val)
             elif node.type == Type.FLOAT32:
-                # Convert to double first for better precision
-                double_val = ir.Constant(ir.DoubleType(), float(node.value))
-                return self.builder.fptrunc(double_val, ir.FloatType(), name="float32_const")
+                # For float32, convert the value directly to binary representation
+                float_val = struct.unpack('f', struct.pack('f', node.value))[0]
+                return ir.Constant(ir.FloatType(), float_val)
             elif node.type == Type.FLOAT or node.type == Type.FLOAT64:
-                return ir.Constant(ir.DoubleType(), float(node.value))
+                # For float64, ensure exact double precision representation
+                float_val = struct.unpack('d', struct.pack('d', node.value))[0]
+                return ir.Constant(ir.DoubleType(), float_val)
             else:
                 raise ValueError(f"Unsupported type in expr gen: {node.type}")
         elif isinstance(node, VariableNode):

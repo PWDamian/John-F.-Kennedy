@@ -9,7 +9,7 @@ from build.JohnFKennedyLexer import JohnFKennedyLexer
 from build.JohnFKennedyParser import JohnFKennedyParser
 
 from JohnsErrorHandler import JohnsErrorHandler
-from ast import *
+from ast2 import *
 from codegen import CodeGenerator
 from visitor import ASTBuilder
 
@@ -20,7 +20,7 @@ class TestType(Enum):
     ALL = "all"  # Run all tests
 
 
-def compile_jfk_file(input_file, show_ast=True, show_llvm=True, run_binary=True, input_values=None):
+def compile_jfk_file(input_file, show_ast2=True, show_llvm=True, run_binary=True, input_values=None):
     """Compile a single JFK file and optionally run it with provided input"""
     print(f"\n=== Compiling {input_file} ===\n")
 
@@ -34,7 +34,7 @@ def compile_jfk_file(input_file, show_ast=True, show_llvm=True, run_binary=True,
     ast_builder = ASTBuilder()
     ast = ast_builder.visit(tree)
 
-    if show_ast:
+    if show_ast2:
         print("AST:")
         for node in ast:
             print(node)
@@ -135,7 +135,7 @@ def main():
 
     parser.add_argument('-t', '--type', choices=['normal', 'auto', 'all'],
                         default='all', help='Type of tests to run')
-    parser.add_argument('--show-ast', action='store_true', help='Display AST output')
+    parser.add_argument('--show-ast2', action='store_true', help='Display AST output')
     parser.add_argument('--show-llvm', action='store_true', help='Display LLVM IR output')
     parser.add_argument('--no-run', action='store_true', help='Do not run the compiled binary')
 
@@ -144,7 +144,7 @@ def main():
     if args.file:
         # Compile a single file
         input_values = load_input_data(args.file)
-        compile_jfk_file(args.file, args.show_ast, args.show_llvm, not args.no_run, input_values)
+        compile_jfk_file(args.file, args.show_ast2, args.show_llvm, not args.no_run, input_values)
 
     elif args.directory:
         # Run tests from directory
@@ -158,7 +158,7 @@ def main():
         success_count = 0
         for test_file in test_files:
             input_values = load_input_data(test_file)
-            if compile_jfk_file(test_file, args.show_ast, args.show_llvm, not args.no_run, input_values):
+            if compile_jfk_file(test_file, args.show_ast2, args.show_llvm, not args.no_run, input_values):
                 success_count += 1
 
         print(f"\n=== Test Summary ===")

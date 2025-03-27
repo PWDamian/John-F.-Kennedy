@@ -6,8 +6,8 @@ float16 product;
 float16 quotient;
 float16 parentheses;
 
-x = 10;
-y = 5;
+x = 10.2;
+y = 5.1;
 
 sum = x + y;
 difference = x - y;

@@ -1,7 +1,7 @@
 from build.JohnFKennedyParser import JohnFKennedyParser
 from build.JohnFKennedyVisitor import JohnFKennedyVisitor
 
-from ast import *
+from ast2 import *
 
 
 class ASTBuilder(JohnFKennedyVisitor):
