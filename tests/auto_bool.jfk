@@ -1,0 +1,44 @@
+// Test boolean literals and variable declarations
+bool b1;
+bool b2;
+b1 = true;
+b2 = false;
+print b1;
+print b2;
+
+// Test boolean comparison
+bool b3 = 10 > 5;
+bool b4 = 5 > 10;
+print b3;
+print b4;
+
+// Test boolean in if statements
+if (b1) {
+    print 42;
+}
+
+if (b2) {
+    print 100;
+} else {
+    print 200;
+}
+
+// Test booleans in arrays
+array_bool barray[3];
+barray[0] = true;
+barray[1] = false;
+barray[2] = 5 > 10;
+print barray[0];
+print barray[1];
+print barray[2];
+
+// Test booleans in matrices
+matrix_bool bmatrix[2][2];
+bmatrix[0][0] = true;
+bmatrix[0][1] = false;
+bmatrix[1][0] = 5 == 5;
+bmatrix[1][1] = 5 != 5;
+print bmatrix[0][0];
+print bmatrix[0][1];
+print bmatrix[1][0];
+print bmatrix[1][1]; 

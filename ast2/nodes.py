@@ -6,6 +6,8 @@ OPERATOR_PRECEDENCE = {
     '*': 2,
     '/': 2,
     '^': 3,
+    '&&': 4,
+    '||': 5,
     '(': 0,
     ')': 0
 }
@@ -106,6 +108,27 @@ class BinaryOpNode(ASTNode):
 
     def __str__(self):
         return f"({self.left} {self.op} {self.right})"
+
+
+class LogicalOpNode(ASTNode):
+    def __init__(self, left, op, right, line: int, column: int):
+        super().__init__(line, column)
+        self.left = left
+        self.op = op
+        self.right = right
+        self.precedence = OPERATOR_PRECEDENCE.get(op, 0)
+
+    def __str__(self):
+        return f"({self.left} {self.op} {self.right})"
+
+
+class LogicalNotNode(ASTNode):
+    def __init__(self, expr, line: int, column: int):
+        super().__init__(line, column)
+        self.expr = expr
+
+    def __str__(self):
+        return f"!({self.expr})"
 
 
 class ComparisonNode(ASTNode):
@@ -254,6 +277,16 @@ def print_ast_as_tree(node, indent=0):
         print_ast_as_tree(node.left, indent + 2)
         print(f"{prefix}  Right:")
         print_ast_as_tree(node.right, indent + 2)
+    elif isinstance(node, LogicalOpNode):
+        print(f"{prefix}LogicalOp: {node.op}")
+        print(f"{prefix}  Left:")
+        print_ast_as_tree(node.left, indent + 2)
+        print(f"{prefix}  Right:")
+        print_ast_as_tree(node.right, indent + 2)
+    elif isinstance(node, LogicalNotNode):
+        print(f"{prefix}LogicalNot:")
+        print(f"{prefix}  Expression:")
+        print_ast_as_tree(node.expr, indent + 2)
     elif isinstance(node, AssignNode):
         print(f"{prefix}Assign: {node.name}")
         print(f"{prefix}  Value:")

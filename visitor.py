@@ -1,4 +1,4 @@
-from ast2.nodes import BooleanNode
+from ast2.nodes import BooleanNode, LogicalOpNode, LogicalNotNode
 from build.JohnFKennedyParser import JohnFKennedyParser
 from build.JohnFKennedyVisitor import JohnFKennedyVisitor
 
@@ -79,6 +79,38 @@ class ASTBuilder(JohnFKennedyVisitor):
 
     def visitQstringExpr(self, ctx: JohnFKennedyParser.QstringExprContext):
         return StringValueNode(str(ctx.QSTRING().getText())[1:-1], ctx.start.line, ctx.start.column)
+
+    # Logical operator handlers
+    def visitPassThroughOrExpr(self, ctx: JohnFKennedyParser.PassThroughOrExprContext):
+        return self.visit(ctx.logicalXorExpression())
+
+    def visitLogicalOrExpr(self, ctx: JohnFKennedyParser.LogicalOrExprContext):
+        left = self.visit(ctx.logicalOrExpression())
+        right = self.visit(ctx.logicalXorExpression())
+        return LogicalOpNode(left, '||', right, ctx.start.line, ctx.start.column)
+
+    def visitPassThroughXorExpr(self, ctx: JohnFKennedyParser.PassThroughXorExprContext):
+        return self.visit(ctx.logicalAndExpression())
+
+    def visitLogicalXorExpr(self, ctx: JohnFKennedyParser.LogicalXorExprContext):
+        left = self.visit(ctx.logicalXorExpression())
+        right = self.visit(ctx.logicalAndExpression())
+        return LogicalOpNode(left, '^', right, ctx.start.line, ctx.start.column)
+
+    def visitPassThroughAndExpr(self, ctx: JohnFKennedyParser.PassThroughAndExprContext):
+        return self.visit(ctx.notExpression())
+
+    def visitLogicalAndExpr(self, ctx: JohnFKennedyParser.LogicalAndExprContext):
+        left = self.visit(ctx.logicalAndExpression())
+        right = self.visit(ctx.notExpression())
+        return LogicalOpNode(left, '&&', right, ctx.start.line, ctx.start.column)
+
+    def visitPassThroughNotExpr(self, ctx: JohnFKennedyParser.PassThroughNotExprContext):
+        return self.visit(ctx.comparisonExpression())
+
+    def visitLogicalNotExpr(self, ctx: JohnFKennedyParser.LogicalNotExprContext):
+        expr = self.visit(ctx.notExpression())
+        return LogicalNotNode(expr, ctx.start.line, ctx.start.column)
 
     def visitStringType(self, ctx: JohnFKennedyParser.StringTypeContext):
         return Type.STRING

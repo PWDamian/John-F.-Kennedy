@@ -84,11 +84,31 @@ forLoop
     ;
 
 expression
-    : comparisonExpression
+    : logicalOrExpression
+    ;
+
+logicalOrExpression
+    : logicalXorExpression                             # PassThroughOrExpr
+    | logicalOrExpression '||' logicalXorExpression    # LogicalOrExpr
+    ;
+
+logicalXorExpression
+    : logicalAndExpression                             # PassThroughXorExpr
+    | logicalXorExpression '^' logicalAndExpression    # LogicalXorExpr
+    ;
+
+logicalAndExpression
+    : notExpression                                    # PassThroughAndExpr
+    | logicalAndExpression '&&' notExpression          # LogicalAndExpr
+    ;
+
+notExpression
+    : comparisonExpression                             # PassThroughNotExpr
+    | '!' notExpression                                # LogicalNotExpr
     ;
 
 comparisonExpression
-    : addExpression                                  # PassThroughComparisonExpr
+    : addExpression                                              # PassThroughComparisonExpr
     | addExpression ('<' | '>' | '<=' | '>=' | '==' | '!=') addExpression  # ComparisonExpr
     ;
 

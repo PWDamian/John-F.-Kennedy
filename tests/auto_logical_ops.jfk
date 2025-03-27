@@ -1,0 +1,81 @@
+// Test logical operators
+
+// Test logical AND (&&)
+bool a1 = true;
+bool a2 = false;
+bool a_result1 = a1 && a1;  // true && true = true
+bool a_result2 = a1 && a2;  // true && false = false
+bool a_result3 = a2 && a1;  // false && true = false (short-circuit)
+bool a_result4 = a2 && a2;  // false && false = false (short-circuit)
+
+print a_result1;  // true
+print a_result2;  // false
+print a_result3;  // false
+print a_result4;  // false
+
+// Test with expressions
+bool a_expr1 = (5 > 3) && (10 == 10);  // true && true = true
+bool a_expr2 = (5 < 3) && (10 == 10);  // false && true = false (short-circuit)
+print a_expr1;  // true
+print a_expr2;  // false
+
+// Test logical OR (||)
+bool o_result1 = a1 || a1;  // true || true = true (short-circuit)
+bool o_result2 = a1 || a2;  // true || false = true (short-circuit)
+bool o_result3 = a2 || a1;  // false || true = true
+bool o_result4 = a2 || a2;  // false || false = false
+
+print o_result1;  // true
+print o_result2;  // true
+print o_result3;  // true
+print o_result4;  // false
+
+// Test with expressions
+bool o_expr1 = (5 < 3) || (10 == 10);  // false || true = true
+bool o_expr2 = (5 < 3) || (10 != 10);  // false || false = false
+print o_expr1;  // true
+print o_expr2;  // false
+
+// Test logical XOR (^)
+bool x_result1 = a1 ^ a1;  // true ^ true = false
+bool x_result2 = a1 ^ a2;  // true ^ false = true
+bool x_result3 = a2 ^ a1;  // false ^ true = true
+bool x_result4 = a2 ^ a2;  // false ^ false = false
+
+print x_result1;  // false
+print x_result2;  // true
+print x_result3;  // true
+print x_result4;  // false
+
+// Test logical NOT (!)
+bool n_result1 = !a1;  // !true = false
+bool n_result2 = !a2;  // !false = true
+bool n_result3 = !(5 > 3);  // !true = false
+bool n_result4 = !(5 < 3);  // !false = true
+
+print n_result1;  // false
+print n_result2;  // true
+print n_result3;  // false
+print n_result4;  // true
+
+// Test complex expressions with multiple operators
+bool complex1 = (a1 && a2) || (!a2);  // (true && false) || (!false) = false || true = true
+bool complex2 = !a1 || (a2 && a1);    // !true || (false && true) = false || false = false
+bool complex3 = (5 > 3) && (10 > 5) && (7 != 8);  // true && true && true = true
+bool complex4 = (5 < 3) || (10 < 5) || (7 == 8);  // false || false || false = false
+
+print complex1;  // true
+print complex2;  // false
+print complex3;  // true
+print complex4;  // false
+
+// Test operator precedence
+bool precedence1 = !a1 && a2;  // !true && false = false && false = false
+bool precedence2 = !(a1 && a2);  // !(true && false) = !false = true
+bool precedence3 = a1 || a2 && a1;  // true || (false && true) = true || false = true
+bool precedence4 = (a1 || a2) && a2;  // (true || false) && false = true && false = false
+
+print precedence1;  // false
+print precedence2;  // true
+print precedence3;  // true
+print precedence4;  // false 

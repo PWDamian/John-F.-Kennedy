@@ -3,7 +3,7 @@ import uuid
 
 from llvmlite import ir
 
-from ast2.nodes import BooleanNode
+from ast2.nodes import BooleanNode, LogicalOpNode, LogicalNotNode
 from ast2 import Type, AssignNode, DeclareAssignNode, PrintNode, ReadNode, NumberNode, VariableNode, BinaryOpNode, \
     StringValueNode, ArrayAccessNode, DeclareArrayNode, ArrayAssignNode, DeclareMatrixNode, MatrixAssignNode, \
     MatrixAccessNode, IfNode, ForNode, ComparisonNode
@@ -31,6 +31,8 @@ class CodeGenerator:
         self.matrix_rows = {}
         self.matrix_cols = {}
         self.matrix_element_types = {}
+        # Counter for creating unique block names
+        self.block_counter = 0
 
     def generate_code(self, ast):
         self._create_main_function()
@@ -374,6 +376,25 @@ class CodeGenerator:
                     '*': self.builder.fmul,
                     '/': self.builder.fdiv
                 }[node.op](left, right, name="float_op")
+        elif isinstance(node, LogicalOpNode):
+            if node.op == '&&':
+                return self._non_short_circuit_logical_op(node, lambda l, r: self.builder.and_(l, r, name="and_result"))
+            elif node.op == '||':
+                return self._non_short_circuit_logical_op(node, lambda l, r: self.builder.or_(l, r, name="or_result"))
+            elif node.op == '^':
+                return self._non_short_circuit_logical_op(node, lambda l, r: self.builder.xor(l, r, name="xor_result"))
+            else:
+                raise ValueError(f"Unknown logical operator: {node.op}")
+        elif isinstance(node, LogicalNotNode):
+            # Generate the expression to negate
+            expr = self._generate_expression(node.expr)
+            
+            # Ensure we're working with a boolean (i1) value
+            if not isinstance(expr.type, ir.IntType) or expr.type.width != 1:
+                expr = self._to_boolean(expr)
+            
+            # Negate the boolean value
+            return self.builder.not_(expr, name="not_result")
         elif isinstance(node, StringValueNode):
             string_data = bytearray(node.value + "\0", "utf8")
             string_arr_ty = ir.ArrayType(ir.IntType(8), len(string_data))
@@ -482,6 +503,48 @@ class CodeGenerator:
                     '==': self.builder.fcmp_ordered('==', left, right),
                     '!=': self.builder.fcmp_ordered('!=', left, right)
                 }[node.op]
+
+    def _non_short_circuit_logical_op(self, node, op_func):
+        """Evaluate both expressions and apply the logical operation.
+        
+        This is a simpler implementation without short-circuit evaluation,
+        which avoids block and PHI node complexities that can cause verification errors.
+        """
+        # Generate left expression
+        left = self._generate_expression(node.left)
+        
+        # Ensure left is boolean type
+        if not isinstance(left.type, ir.IntType) or left.type.width != 1:
+            left = self._to_boolean(left)
+        
+        # Generate right expression 
+        right = self._generate_expression(node.right)
+        
+        # Ensure right is boolean type
+        if not isinstance(right.type, ir.IntType) or right.type.width != 1:
+            right = self._to_boolean(right)
+        
+        # Apply the operation
+        return op_func(left, right)
+
+    def _to_boolean(self, value):
+        """Convert a value to boolean (i1) type"""
+        value_type = self._get_type_from_value(value)
+        
+        if value_type == Type.BOOL:
+            return value
+        elif "int" in value_type:
+            # Compare with zero for integer types
+            zero = ir.Constant(value.type, 0)
+            return self.builder.icmp_signed('!=', value, zero)
+        elif "float" in value_type:
+            # Compare with zero for float types
+            zero = ir.Constant(value.type, 0)
+            return self.builder.fcmp_ordered('!=', value, zero)
+        else:
+            # For other types, try to determine truthiness
+            # This is a fallback, but specific types should be handled above
+            return ir.Constant(ir.IntType(1), 1)  # Default to true for unhandled types
 
     def _get_type_from_value(self, value):
         if isinstance(value.type, ir.IntType):
