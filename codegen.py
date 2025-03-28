@@ -362,7 +362,7 @@ class CodeGenerator:
             left = self._convert_if_needed(left, result_type)
             right = self._convert_if_needed(right, result_type)
 
-            if "int" in result_type:  # Check if it's any integer type
+            if "int" in result_type or result_type == "bool":  # Check if it's any integer type
                 return {
                     '+': self.builder.add,
                     '-': self.builder.sub,
