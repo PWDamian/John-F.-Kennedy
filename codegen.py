@@ -362,13 +362,15 @@ class CodeGenerator:
             left = self._convert_if_needed(left, result_type)
             right = self._convert_if_needed(right, result_type)
 
-            if "int" in result_type or result_type == "bool":  # Check if it's any integer type
+            if "int" in result_type:  # Check if it's any integer type
                 return {
                     '+': self.builder.add,
                     '-': self.builder.sub,
                     '*': self.builder.mul,
                     '/': self.builder.sdiv
                 }[node.op](left, right, name="int_op")
+            elif result_type == "bool":
+                raise Exception("Operations (+,-,/,*) are not allowed for boolean values.")
             else:
                 return {
                     '+': self.builder.fadd,
