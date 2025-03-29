@@ -2,32 +2,29 @@ from llvmlite import ir
 
 
 class Type:
-    # Integer types
     INT8 = "int8"
     INT16 = "int16"
     INT32 = "int32"
     INT64 = "int64"
     INT = "int"  # Alias for INT64
 
-    # Floating point types
     FLOAT16 = "float16"
     FLOAT32 = "float32"
     FLOAT64 = "float64"
     FLOAT = "float"  # Alias for FLOAT64
 
-    # Other types
     STRING = "string"
     ARRAY = "array"
-    BOOL = "bool"  # Boolean type
+    BOOL = "bool"
 
     # Type hierarchy for numeric types (from lowest to highest precision)
-    _numeric_hierarchy = [
-        BOOL, INT8, INT16, INT32, INT64,  # Integer types
-        FLOAT16, FLOAT32, FLOAT64  # Floating point types
+    numeric_hierarchy = [
+        BOOL, INT8, INT16, INT32, INT64,
+        FLOAT16, FLOAT32, FLOAT64
     ]
 
     @classmethod
-    def _map_to_internal_type(cls, type_name):
+    def map_to_internal_type(cls, type_name):
         if type_name == cls.INT:
             return cls.INT64
         elif type_name == cls.FLOAT:
@@ -37,8 +34,8 @@ class Type:
     @classmethod
     def get_common_type(cls, left_type, right_type):
         # Map backward compatibility types to internal types
-        left_type = cls._map_to_internal_type(left_type)
-        right_type = cls._map_to_internal_type(right_type)
+        left_type = cls.map_to_internal_type(left_type)
+        right_type = cls.map_to_internal_type(right_type)
 
         # If either is array or string, can't determine common type
         if left_type == Type.ARRAY or right_type == Type.ARRAY or \
@@ -47,17 +44,17 @@ class Type:
 
         # Get indices in hierarchy
         try:
-            left_idx = cls._numeric_hierarchy.index(left_type)
-            right_idx = cls._numeric_hierarchy.index(right_type)
+            left_idx = cls.numeric_hierarchy.index(left_type)
+            right_idx = cls.numeric_hierarchy.index(right_type)
         except ValueError:
             raise ValueError(f"Unknown type in common type determination: {left_type} or {right_type}")
 
         # Return the type with higher precision
-        return cls._numeric_hierarchy[max(left_idx, right_idx)]
+        return cls.numeric_hierarchy[max(left_idx, right_idx)]
 
     @classmethod
     def get_ir_type(cls, type):
-        type = cls._map_to_internal_type(type)
+        type = cls.map_to_internal_type(type)
 
         if type == cls.BOOL:
             return ir.IntType(1)

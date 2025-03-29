@@ -79,6 +79,3 @@ print precedence1;  // false
 print precedence2;  // true
 print precedence3;  // true
 print precedence4;  // false
-
-// XD
-print true/true;

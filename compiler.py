@@ -10,8 +10,8 @@ from build.JohnFKennedyParser import JohnFKennedyParser
 
 from JohnsErrorHandler import JohnsErrorHandler
 from ast2 import *
-from codegen import CodeGenerator
-from visitor import ASTBuilder
+from ast2.visitor import ASTBuilder
+from codegen.codegen import CodeGenerator
 
 
 class TestType(Enum):
