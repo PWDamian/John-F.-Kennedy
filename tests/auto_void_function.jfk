@@ -1,0 +1,5 @@
+void printMessage(string message) {
+    print message;
+}
+
+printMessage("This is a test message");

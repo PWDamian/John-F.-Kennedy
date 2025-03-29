@@ -1,13 +1,13 @@
-from ast2.nodes import BooleanNode, LogicalOpNode, LogicalNotNode
 from build.JohnFKennedyParser import JohnFKennedyParser
 from build.JohnFKennedyVisitor import JohnFKennedyVisitor
 
 from ast2 import *
+from ast2.nodes import ParameterNode
 
 
 class ASTBuilder(JohnFKennedyVisitor):
     def visitProgram(self, ctx: JohnFKennedyParser.ProgramContext):
-        return [self.visit(stmt) for stmt in ctx.statement()]
+        return [self.visit(decl) for decl in ctx.topLevelDeclaration()]
 
     def visitDeclareAssignStatement(self,
                                     ctx: JohnFKennedyParser.DeclareAssignStatementContext):
@@ -111,6 +111,9 @@ class ASTBuilder(JohnFKennedyVisitor):
     def visitLogicalNotExpr(self, ctx: JohnFKennedyParser.LogicalNotExprContext):
         expr = self.visit(ctx.notExpression())
         return LogicalNotNode(expr, ctx.start.line, ctx.start.column)
+
+    def visitVoidType(self, ctx: JohnFKennedyParser.VoidTypeContext):
+        return Type.VOID
 
     def visitStringType(self, ctx: JohnFKennedyParser.StringTypeContext):
         return Type.STRING
@@ -244,7 +247,6 @@ class ASTBuilder(JohnFKennedyVisitor):
         return IfNode(condition, body, else_body, ctx.start.line, ctx.start.column)
 
     def visitForLoop(self, ctx: JohnFKennedyParser.ForLoopContext):
-        # Handle initialization
         init_is_assign = False
         if ctx.declareAssignStatement():
             init = self.visit(ctx.declareAssignStatement())
@@ -254,14 +256,51 @@ class ASTBuilder(JohnFKennedyVisitor):
         else:
             init = None
 
-        # Visit condition expression
         condition = self.visit(ctx.expression())
 
-        # Visit update statement - use index 1 if init used an assignStatement
         update_index = 1 if init_is_assign else 0
         update = self.visit(ctx.assignStatement(update_index))
 
-        # Visit loop body statements
         body = [self.visit(stmt) for stmt in ctx.statement()]
 
         return ForNode(init, condition, update, body, ctx.start.line, ctx.start.column)
+
+    def visitFunctionDeclaration(self, ctx: JohnFKennedyParser.FunctionDeclarationContext):
+        return_type = self.visit(ctx.type_()) if ctx.type_() else "void"
+        name = ctx.IDENTIFIER().getText()
+
+        parameters = []
+        if ctx.parameterList():
+            parameters = self.visit(ctx.parameterList())
+
+        body = [self.visit(stmt) for stmt in ctx.statement()]
+
+        return FunctionDeclarationNode(return_type, name, parameters, body, ctx.start.line, ctx.start.column)
+
+    def visitParameterList(self, ctx: JohnFKennedyParser.ParameterListContext):
+        return [self.visit(param) for param in ctx.parameter()]
+
+    def visitParameter(self, ctx: JohnFKennedyParser.ParameterContext):
+        type_name = self.visit(ctx.type_())
+        name = ctx.IDENTIFIER().getText()
+        return ParameterNode(type_name, name, ctx.start.line, ctx.start.column)
+
+    def visitReturnStatement(self, ctx: JohnFKennedyParser.ReturnStatementContext):
+        value = self.visit(ctx.expression()) if ctx.expression() else None
+        return ReturnNode(value, ctx.start.line, ctx.start.column)
+
+    def visitFunctionCall(self, ctx: JohnFKennedyParser.FunctionCallContext):
+        name = ctx.IDENTIFIER().getText()
+        arguments = []
+        if ctx.argumentList():
+            arguments = self.visit(ctx.argumentList())
+        return FunctionCallNode(name, arguments, ctx.start.line, ctx.start.column)
+
+    def visitArgumentList(self, ctx: JohnFKennedyParser.ArgumentListContext):
+        return [self.visit(expr) for expr in ctx.expression()]
+
+    def visitFunctionCallStatement(self, ctx: JohnFKennedyParser.FunctionCallStatementContext):
+        return self.visit(ctx.functionCall())
+
+    def visitFunctionCallExpr(self, ctx: JohnFKennedyParser.FunctionCallExprContext):
+        return self.visit(ctx.functionCall())

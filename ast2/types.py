@@ -16,6 +16,7 @@ class Type:
     STRING = "string"
     ARRAY = "array"
     BOOL = "bool"
+    VOID = "void"  # Add void type constant
 
     # Type hierarchy for numeric types (from lowest to highest precision)
     numeric_hierarchy = [
@@ -56,7 +57,9 @@ class Type:
     def get_ir_type(cls, type):
         type = cls.map_to_internal_type(type)
 
-        if type == cls.BOOL:
+        if type == cls.VOID:
+            return ir.VoidType()
+        elif type == cls.BOOL:
             return ir.IntType(1)
         elif type == cls.INT8:
             return ir.IntType(8)

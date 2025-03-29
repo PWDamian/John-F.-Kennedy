@@ -5,8 +5,9 @@ from llvmlite import ir
 
 from ast2 import Type
 from ast2.nodes import NumberNode, BooleanNode, VariableNode, StringValueNode, ArrayAccessNode, MatrixAccessNode, \
-    BinaryOpNode, ComparisonNode, LogicalOpNode, LogicalNotNode
+    BinaryOpNode, ComparisonNode, LogicalOpNode, LogicalNotNode, FunctionCallNode
 from codegen import logical_ops, type_utils
+from codegen.function_ops import generate_function_call
 
 
 def generate_expression(self, node):
@@ -185,3 +186,9 @@ def generate_expression(self, node):
                 '==': self.builder.fcmp_ordered('==', left, right),
                 '!=': self.builder.fcmp_ordered('!=', left, right)
             }[node.op]
+
+    elif isinstance(node, FunctionCallNode):
+        result = generate_function_call(self, node)
+        if result is None:
+            raise ValueError(f"Cannot use void function '{node.name}' in an expression")
+        return result

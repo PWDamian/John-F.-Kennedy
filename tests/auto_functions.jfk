@@ -1,0 +1,30 @@
+// Basic function that returns an int
+int simple() {
+    return 42;
+}
+
+// Function with parameters that returns their sum
+int add(int a, int b) {
+    return a + b;
+}
+
+// Function that demonstrates float operations
+float calculateAverage(int count, float sum) {
+    return sum / count;
+}
+
+// Test simple function
+int result = simple();
+print result;
+
+// Test add function
+int sum;
+sum = add(5, 7);
+print sum;
+
+// Test calculateAverage function
+float avg;
+avg = calculateAverage(3, 15.0);
+print avg;
+
+

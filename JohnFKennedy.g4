@@ -6,10 +6,16 @@ grammar JohnFKennedy;
     self.addErrorListener(JohnsErrorHandler())
 }
 
-program : (statement)+ EOF;
+program : (topLevelDeclaration)+ EOF;
+
+topLevelDeclaration
+    : statement
+    | functionDeclaration
+    ;
 
 type
-    : 'int8'      # Int8Type
+    : 'void'      # VoidType    // Added void type here
+    | 'int8'      # Int8Type
     | 'int16'     # Int16Type
     | 'int32'     # Int32Type
     | 'int64'     # Int64Type
@@ -60,6 +66,8 @@ statement
     | readStatement
     | ifStatement
     | forLoop
+    | functionCallStatement
+    | returnStatement
     ;
 
 declareAssignStatement : type IDENTIFIER ('=' expression)? ';';
@@ -131,9 +139,36 @@ primaryExpression
     | IDENTIFIER '[' expression ']' '[' expression ']'  # MatrixAccessExpr
     | QSTRING                                        # QstringExpr
     | '(' expression ')'                             # ParenExpr
+    | functionCall                                   # FunctionCallExpr
     ;
 
+functionDeclaration
+    : type IDENTIFIER '(' parameterList? ')' '{' statement* '}'
+    ;
 
+parameterList
+    : parameter (',' parameter)*
+    ;
+
+parameter
+    : type IDENTIFIER
+    ;
+
+returnStatement
+    : 'return' expression? ';'
+    ;
+
+functionCallStatement
+    : functionCall ';'
+    ;
+
+functionCall
+    : IDENTIFIER '(' argumentList? ')'
+    ;
+
+argumentList
+    : expression (',' expression)*
+    ;
 
 BOOLEAN_LITERAL : 'true' | 'false';
 IDENTIFIER : [a-zA-Z_][a-zA-Z_0-9]* ;
@@ -142,3 +177,4 @@ FLOAT_NUMBER : [0-9]+'.'[0-9]+ ;
 WS : [ \t\r\n]+ -> skip ;
 CMT : '//' ~( '\r' | '\n' )* -> skip;
 QSTRING : '"'([a-zA-Z0-9`~!@#$%^&*()_+\-=:;"'<>,.?/|] | ' ')*'"';
+

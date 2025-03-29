@@ -24,20 +24,20 @@ def generate_if(self, node):
 
     self.builder.position_at_end(then_block)
     for stmt in node.body:
-        self._generate_node(stmt)
+        self.generate_node(stmt)
     self.builder.branch(end_block)
 
     if else_block:
         self.builder.position_at_end(else_block)
         for stmt in node.else_body:
-            self._generate_node(stmt)
+            self.generate_node(stmt)
         self.builder.branch(end_block)
 
     self.builder.position_at_end(end_block)
 
 
 def generate_for(self, node):
-    self._generate_node(node.init)
+    self.generate_node(node.init)
 
     cond_block = self.func.append_basic_block(name="for_cond")
     body_block = self.func.append_basic_block(name="for_body")
@@ -60,11 +60,11 @@ def generate_for(self, node):
 
     self.builder.position_at_end(body_block)
     for stmt in node.body:
-        self._generate_node(stmt)
+        self.generate_node(stmt)
     self.builder.branch(update_block)
 
     self.builder.position_at_end(update_block)
-    self._generate_node(node.update)
+    self.generate_node(node.update)
     self.builder.branch(cond_block)
 
     self.builder.position_at_end(end_block)

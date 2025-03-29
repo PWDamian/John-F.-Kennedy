@@ -1,16 +1,18 @@
-from .types import Type
 from .nodes import (
     ASTNode, NumberNode, StringValueNode, VariableNode, BinaryOpNode,
     ArrayAccessNode, MatrixAccessNode, AssignNode, ArrayAssignNode,
-    MatrixAssignNode, DeclareAssignNode, DeclareArrayNode, 
+    MatrixAssignNode, DeclareAssignNode, DeclareArrayNode,
     DeclareMatrixNode, ReadNode, PrintNode, ComparisonNode,
-    IfNode, ForNode, print_ast_as_tree
+    IfNode, ForNode, FunctionDeclarationNode, FunctionCallNode, ReturnNode,
+    LogicalOpNode, LogicalNotNode, BooleanNode, print_ast_as_tree
 )
+from .types import Type
 
 __all__ = [
     'Type', 'ASTNode', 'NumberNode', 'StringValueNode', 'VariableNode',
     'BinaryOpNode', 'ArrayAccessNode', 'MatrixAccessNode', 'AssignNode',
-    'ArrayAssignNode', 'MatrixAssignNode', 'DeclareAssignNode', 
+    'ArrayAssignNode', 'MatrixAssignNode', 'DeclareAssignNode',
     'DeclareArrayNode', 'DeclareMatrixNode', 'ReadNode', 'PrintNode',
-    'ComparisonNode', 'IfNode', 'ForNode', 'print_ast_as_tree'
+    'ComparisonNode', 'IfNode', 'ForNode', 'FunctionDeclarationNode', 'FunctionCallNode', 'ReturnNode',
+    'LogicalOpNode', 'LogicalNotNode', 'BooleanNode', 'print_ast_as_tree'
 ]

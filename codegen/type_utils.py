@@ -87,3 +87,74 @@ def to_boolean(self, value):
         return self.builder.fcmp_ordered('!=', value, zero)
     else:
         return ir.Constant(ir.IntType(1), 1)
+
+
+def convert_value_to_type(self, value, target_ir_type):
+    """
+    Convert a value to a specific LLVM IR type
+    """
+    # Get source type information
+    source_type = get_type_from_value(self, value)
+    source_ir_type = value.type
+
+    # Handle pointer types like strings
+    if isinstance(target_ir_type, ir.PointerType) and isinstance(source_ir_type, ir.PointerType):
+        # For string handling, ensure we're using the right pointer type
+        if target_ir_type.pointee == ir.IntType(8) and source_ir_type.pointee == ir.IntType(8):
+            # Both are pointers to i8 (char*), so no need for bitcast
+            return value
+        return self.builder.bitcast(value, target_ir_type)
+
+    # Convert between numeric types
+    if isinstance(target_ir_type, ir.IntType) and isinstance(source_ir_type, ir.IntType):
+        # Integer to integer conversion
+        if target_ir_type.width > source_ir_type.width:
+            return self.builder.sext(value, target_ir_type)
+        elif target_ir_type.width < source_ir_type.width:
+            return self.builder.trunc(value, target_ir_type)
+        else:
+            return value
+
+    elif isinstance(target_ir_type, (ir.FloatType, ir.DoubleType, ir.HalfType)) and isinstance(source_ir_type,
+                                                                                               ir.IntType):
+        # Integer to floating point
+        return self.builder.sitofp(value, target_ir_type)
+
+    elif isinstance(target_ir_type, ir.IntType) and isinstance(source_ir_type,
+                                                               (ir.FloatType, ir.DoubleType, ir.HalfType)):
+        # Floating point to integer
+        return self.builder.fptosi(value, target_ir_type)
+
+    elif isinstance(target_ir_type, (ir.FloatType, ir.DoubleType, ir.HalfType)) and isinstance(source_ir_type, (
+            ir.FloatType, ir.DoubleType, ir.HalfType)):
+        # Floating point to floating point
+        if (isinstance(target_ir_type, ir.DoubleType) and not isinstance(source_ir_type, ir.DoubleType)) or \
+                (isinstance(target_ir_type, ir.FloatType) and isinstance(source_ir_type, ir.HalfType)):
+            return self.builder.fpext(value, target_ir_type)
+        elif (isinstance(source_ir_type, ir.DoubleType) and not isinstance(target_ir_type, ir.DoubleType)) or \
+                (isinstance(source_ir_type, ir.FloatType) and isinstance(target_ir_type, ir.HalfType)):
+            return self.builder.fptrunc(value, target_ir_type)
+        else:
+            return value
+
+    # If types are already compatible, no conversion needed
+    elif target_ir_type == source_ir_type:
+        return value
+
+    else:
+        raise ValueError(f"Cannot convert from {source_ir_type} to {target_ir_type}")
+
+
+def get_common_ir_type(self, left_value, right_value):
+    """
+    Determine the common IR type between two LLVM values
+    """
+    # Get the type enums from LLVM values
+    left_type = get_type_from_value(self, left_value)
+    right_type = get_type_from_value(self, right_value)
+
+    # Use the Type's get_common_type to find higher precision type
+    common_type = Type.get_common_type(left_type, right_type)
+
+    # Return the IR type for this common type
+    return Type.get_ir_type(common_type)

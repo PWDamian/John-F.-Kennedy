@@ -252,6 +252,49 @@ class ForNode(ASTNode):
         return f"For({self.init}; {self.condition}; {self.update}) {{ {self.body} }}"
 
 
+class FunctionDeclarationNode(ASTNode):
+    def __init__(self, return_type, name, parameters, body, line: int, column: int):
+        super().__init__(line, column)
+        self.return_type = return_type  # Type name or "void"
+        self.name = name
+        self.parameters = parameters  # List of ParameterNode
+        self.body = body  # List of statement nodes
+
+    def __str__(self):
+        params_str = ", ".join(str(param) for param in self.parameters)
+        return f"Function {self.name}({params_str}) -> {self.return_type}"
+
+
+class ParameterNode(ASTNode):
+    def __init__(self, type_name, name, line: int, column: int):
+        super().__init__(line, column)
+        self.type = type_name
+        self.name = name
+
+    def __str__(self):
+        return f"{self.type} {self.name}"
+
+
+class FunctionCallNode(ASTNode):
+    def __init__(self, name, arguments, line: int, column: int):
+        super().__init__(line, column)
+        self.name = name
+        self.arguments = arguments  # List of expression nodes
+
+    def __str__(self):
+        args_str = ", ".join(str(arg) for arg in self.arguments)
+        return f"{self.name}({args_str})"
+
+
+class ReturnNode(ASTNode):
+    def __init__(self, value, line: int, column: int):
+        super().__init__(line, column)
+        self.value = value  # Can be None for void return
+
+    def __str__(self):
+        return f"return {self.value if self.value is not None else ''}"
+
+
 def print_ast_as_tree(node, indent=0):
     prefix = "  " * indent
 
@@ -355,5 +398,26 @@ def print_ast_as_tree(node, indent=0):
         print(f"{prefix}  Body:")
         for stmt in node.body:
             print_ast_as_tree(stmt, indent + 3)
+    elif isinstance(node, FunctionDeclarationNode):
+        print(f"{prefix}Function: {node.name} -> {node.return_type}")
+        print(f"{prefix}  Parameters:")
+        for param in node.parameters:
+            print_ast_as_tree(param, indent + 2)
+        print(f"{prefix}  Body:")
+        for stmt in node.body:
+            print_ast_as_tree(stmt, indent + 2)
+    elif isinstance(node, ParameterNode):
+        print(f"{prefix}Parameter: {node.name} ({node.type})")
+    elif isinstance(node, FunctionCallNode):
+        print(f"{prefix}Function Call: {node.name}")
+        print(f"{prefix}  Arguments:")
+        for arg in node.arguments:
+            print_ast_as_tree(arg, indent + 2)
+    elif isinstance(node, ReturnNode):
+        print(f"{prefix}Return:")
+        if node.value:
+            print_ast_as_tree(node.value, indent + 1)
+        else:
+            print(f"{prefix}  void")
     else:
         print(f"{prefix}Unknown node type: {type(node)}")
