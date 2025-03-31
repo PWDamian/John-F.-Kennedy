@@ -11,9 +11,9 @@ def generate_print(self, node):
         type_name = self.variable_types.get(node.expression.name)
     elif hasattr(node.expression, 'array_element_types') and hasattr(node.expression, 'name'):
         element_type = self.array_element_types.get(node.expression.name)
-        type_name = element_type if element_type else type_utils.get_type_from_value(self, value)
+        type_name = element_type if element_type else type_utils.get_type_from_value(value)
     else:
-        type_name = type_utils.get_type_from_value(self, value)
+        type_name = type_utils.get_type_from_value(value)
 
     type_name = Type.map_to_internal_type(type_name)
 

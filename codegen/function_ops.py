@@ -60,6 +60,7 @@ def generate_function_declaration(code_gen, node):
 
         code_gen.variable_types[param.name] = param.type
 
+    code_gen.variable_types[name] = node.return_type
     # Generate code for function body
     for stmt in node.body:
         code_gen.generate_node(stmt)

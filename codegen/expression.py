@@ -48,8 +48,8 @@ def generate_expression(self, node):
     elif isinstance(node, BinaryOpNode):
         left = generate_expression(self, node.left)
         right = generate_expression(self, node.right)
-        left_type = type_utils.get_type_from_value(self, left)
-        right_type = type_utils.get_type_from_value(self, right)
+        left_type = type_utils.get_type_from_value(left)
+        right_type = type_utils.get_type_from_value(right)
         result_type = Type.get_common_type(left_type, right_type)
         left = type_utils.convert_if_needed(self, left, result_type)
         right = type_utils.convert_if_needed(self, right, result_type)
@@ -161,8 +161,8 @@ def generate_expression(self, node):
     elif isinstance(node, ComparisonNode):
         left = generate_expression(self, node.left)
         right = generate_expression(self, node.right)
-        left_type = type_utils.get_type_from_value(self, left)
-        right_type = type_utils.get_type_from_value(self, right)
+        left_type = type_utils.get_type_from_value(left)
+        right_type = type_utils.get_type_from_value(right)
 
         result_type = Type.get_common_type(left_type, right_type)
         left = type_utils.convert_if_needed(self, left, result_type)

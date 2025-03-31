@@ -1,3 +1,5 @@
+import traceback
+
 from llvmlite import ir
 
 from ast2 import AssignNode, DeclareAssignNode, PrintNode, ReadNode, DeclareArrayNode, ArrayAssignNode, \
@@ -40,6 +42,20 @@ class CodeGenerator:
         # Create forward declarations for all functions before processing main
         self._create_function_declarations()
 
+        # Second pass: generate code for all functions
+        for node in ast:
+            if isinstance(node, FunctionDeclarationNode):
+                try:
+                    self.generate_node(node)
+                except Exception as e:
+                    if None not in [node.line, node.column]:
+                        print(f"Error at {node.line}:{node.column}:")
+                    else:
+                        print(node)
+                    print(f"\tMessage: {str(e)}")
+                    traceback.print_exc()
+                    exit(1)
+
         # Create main function if it doesn't exist
         if 'main' not in self.functions:
             self._create_main_function()
@@ -54,25 +70,13 @@ class CodeGenerator:
                             print(f"Error at {node.line}:{node.column}:")
                         else:
                             print(node)
-                        print(f"\tMessage: {str(e)}")
+                        print(f"\tMessage: {str(e)} for node `{node}`")
+                        traceback.print_exc()
                         exit(1)
 
             # Add a return statement if main doesn't have one
             if not self.builder.block.is_terminated:
                 self.builder.ret(ir.Constant(ir.IntType(32), 0))
-
-        # Second pass: generate code for all functions
-        for node in ast:
-            if isinstance(node, FunctionDeclarationNode):
-                try:
-                    self.generate_node(node)
-                except Exception as e:
-                    if None not in [node.line, node.column]:
-                        print(f"Error at {node.line}:{node.column}:")
-                    else:
-                        print(node)
-                    print(f"\tMessage: {str(e)}")
-                    exit(1)
 
     def _create_function_declarations(self):
         """Create LLVM IR declarations for all functions before defining them"""

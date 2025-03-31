@@ -13,9 +13,7 @@ float calculateAverage(int count, float sum) {
     return sum / count;
 }
 
-// Test simple function
-int result = simple();
-print result;
+print simple();
 
 // Test add function
 int sum;
@@ -23,8 +21,5 @@ sum = add(5, 7);
 print sum;
 
 // Test calculateAverage function
-float avg;
-avg = calculateAverage(3, 15.0);
+float avg = calculateAverage(3, 15.0);
 print avg;
-
-

@@ -266,7 +266,7 @@ class ASTBuilder(JohnFKennedyVisitor):
         return ForNode(init, condition, update, body, ctx.start.line, ctx.start.column)
 
     def visitFunctionDeclaration(self, ctx: JohnFKennedyParser.FunctionDeclarationContext):
-        return_type = self.visit(ctx.type_()) if ctx.type_() else "void"
+        return_type = self.visit(ctx.type_())
         name = ctx.IDENTIFIER().getText()
 
         parameters = []

@@ -3,7 +3,7 @@ from llvmlite import ir
 from ast2 import Type
 
 
-def get_type_from_value(self, value):
+def get_type_from_value(value):
     if isinstance(value.type, ir.IntType):
         if value.type.width == 1:
             return Type.BOOL
@@ -15,6 +15,8 @@ def get_type_from_value(self, value):
             return Type.INT32
         elif value.type.width == 64:
             return Type.INT
+        else:
+            raise ValueError(f"Unknown integer width: {value.type.width}")
     elif value.type == ir.HalfType():
         return Type.FLOAT16
     elif value.type == ir.FloatType():
@@ -28,7 +30,7 @@ def get_type_from_value(self, value):
 
 
 def convert_if_needed(self, value, target_type):
-    source_type = get_type_from_value(self, value)
+    source_type = get_type_from_value(value)
     if source_type == target_type:
         return value
 
@@ -75,7 +77,7 @@ def normalize_index(self, index_value):
 
 
 def to_boolean(self, value):
-    value_type = get_type_from_value(self, value)
+    value_type = get_type_from_value(value)
 
     if value_type == Type.BOOL:
         return value
@@ -94,7 +96,7 @@ def convert_value_to_type(self, value, target_ir_type):
     Convert a value to a specific LLVM IR type
     """
     # Get source type information
-    source_type = get_type_from_value(self, value)
+    source_type = get_type_from_value(value)
     source_ir_type = value.type
 
     # Handle pointer types like strings
@@ -150,8 +152,8 @@ def get_common_ir_type(self, left_value, right_value):
     Determine the common IR type between two LLVM values
     """
     # Get the type enums from LLVM values
-    left_type = get_type_from_value(self, left_value)
-    right_type = get_type_from_value(self, right_value)
+    left_type = get_type_from_value(left_value)
+    right_type = get_type_from_value(right_value)
 
     # Use the Type's get_common_type to find higher precision type
     common_type = Type.get_common_type(left_type, right_type)
