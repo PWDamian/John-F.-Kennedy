@@ -102,7 +102,7 @@ class CodeGenerator:
                         print(f"Error at {node.line}:{node.column}:")
                     else:
                         print(node)
-                    print(f"\tMessage: {str(e)}")
+                    print(f"\tMessage: {str(e)} for node `{node}`")
                     traceback.print_exc()
                     exit(1)
 

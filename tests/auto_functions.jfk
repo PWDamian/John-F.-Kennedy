@@ -10,6 +10,13 @@ float calculateAverage(int count, float sum) {
     return sum / count;
 }
 
+int recursiveFunction(int n) {
+    if (n == 0) {
+        return 0;
+    }
+    return n + recursiveFunction(n - 1);
+}
+
 print simple();
 
 int sum;
@@ -18,3 +25,6 @@ print sum;
 
 float avg = calculateAverage(3, 15.0);
 print avg;
+
+int result = recursiveFunction(3);
+print result;
