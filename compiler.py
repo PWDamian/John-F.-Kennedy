@@ -20,37 +20,39 @@ class TestType(Enum):
     ALL = "all"  # Run all tests
 
 
-def compile_jfk_file(input_file, show_ast2=True, show_llvm=True, run_binary=True, input_values=None):
+def compile_jfk_file(input_file, show_ast=True, show_llvm=True, run_binary=True, input_values=None):
     """Compile a single JFK file and optionally run it with provided input"""
     print(f"\n=== Compiling {input_file} ===\n")
 
     input_stream = FileStream(input_file)
-    lexer = JohnFKennedyLexer(input_stream)
-    token_stream = CommonTokenStream(lexer)
-    parser = JohnFKennedyParser(token_stream)
-    parser.addErrorListener(JohnsErrorHandler)
-    tree = parser.program()
+    try:
+        lexer = JohnFKennedyLexer(input_stream)
+        token_stream = CommonTokenStream(lexer)
+        parser = JohnFKennedyParser(token_stream)
+        parser.addErrorListener(JohnsErrorHandler)
+        tree = parser.program()
 
-    ast_builder = ASTBuilder()
-    ast = ast_builder.visit(tree)
+        ast_builder = ASTBuilder()
+        ast = ast_builder.visit(tree)
 
-    if show_ast2:
-        print("AST:")
-        for node in ast:
-            print(node)
+        if show_ast:
+            print("AST:")
+            for node in ast:
+                print(node)
 
-        print("\nAST as tree:")
-        print_ast_as_tree(ast)
+            print("\nAST as tree:")
+            print_ast_as_tree(ast)
 
-    codegen = CodeGenerator()
-    codegen.generate_code(ast)
-    llvm_ir = codegen.get_ir()
+        codegen = CodeGenerator()
+        codegen.generate_code(ast)
+        llvm_ir = codegen.get_ir()
 
-    if show_llvm:
-        print("\nLLVM IR:")
-        print(llvm_ir)
+        if show_llvm:
+            print("\nLLVM IR:")
+            print(llvm_ir)
+    except:
+        return False
 
-    # Create a unique output filename based on the input filename
     base_name = os.path.basename(input_file).split('.')[0]
     output_dir = "output"
     os.makedirs(output_dir, exist_ok=True)
@@ -98,7 +100,7 @@ def compile_jfk_file(input_file, show_ast2=True, show_llvm=True, run_binary=True
                     print(f"\nUwaga: Program zakończył się kodem {result.returncode}")
 
     except subprocess.CalledProcessError as e:
-        print(f"Error during compilation: {e}")
+        print(f"RuntimeError: {e}")
         return False
 
     return True
@@ -135,19 +137,17 @@ def main():
 
     parser.add_argument('-t', '--type', choices=['normal', 'auto', 'all'],
                         default='all', help='Type of tests to run')
-    parser.add_argument('--show-ast2', action='store_true', help='Display AST output')
+    parser.add_argument('--show-ast', action='store_true', help='Display AST output')
     parser.add_argument('--show-llvm', action='store_true', help='Display LLVM IR output')
     parser.add_argument('--no-run', action='store_true', help='Do not run the compiled binary')
 
     args = parser.parse_args()
 
     if args.file:
-        # Compile a single file
         input_values = load_input_data(args.file)
-        compile_jfk_file(args.file, args.show_ast2, args.show_llvm, not args.no_run, input_values)
+        compile_jfk_file(args.file, args.show_ast, args.show_llvm, not args.no_run, input_values)
 
     elif args.directory:
-        # Run tests from directory
         test_type = TestType(args.type)
         test_files = find_test_files(args.directory, test_type)
 
@@ -155,16 +155,20 @@ def main():
             print(f"No test files found in {args.directory} with type {test_type.value}")
             return
 
-        success_count = 0
+        failed_tests = []
         for test_file in test_files:
             input_values = load_input_data(test_file)
-            if compile_jfk_file(test_file, args.show_ast2, args.show_llvm, not args.no_run, input_values):
-                success_count += 1
+            if not compile_jfk_file(test_file, args.show_ast, args.show_llvm, not args.no_run, input_values):
+                failed_tests.append(test_file)
 
         print(f"\n=== Test Summary ===")
         print(f"Tests run: {len(test_files)}")
-        print(f"Tests passed: {success_count}")
-        print(f"Tests failed: {len(test_files) - success_count}")
+        print(f"Tests passed: {len(test_files) - len(failed_tests)}")
+        print(f"Tests failed: {len(failed_tests)}")
+        if failed_tests:
+            print("\nFailed tests:")
+            for test in failed_tests:
+                print(f"- {test}")
 
     else:
         print("Please provide a file to compile or use -d to specify a test directory")

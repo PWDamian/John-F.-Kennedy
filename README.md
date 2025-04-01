@@ -14,7 +14,7 @@ A simple programming language compiler implemented in Python, using ANTLR4 for p
 
 - **Single test file:**
     ```sh
-    python compiler.py tests/auto_variable_scope_global_in_function.jfk
+    python compiler.py tests/auto_strings.jfk
     ```
 
 - **All automatic tests (no input):**
@@ -36,7 +36,7 @@ A simple programming language compiler implemented in Python, using ANTLR4 for p
 
 - **Show AST:**
     ```sh
-    python compiler.py --show-ast2
+    python compiler.py --show-ast
     ```
 
 - **Show LLVM IR:**

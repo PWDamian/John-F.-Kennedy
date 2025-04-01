@@ -5,12 +5,11 @@ from codegen import expression, type_utils
 
 
 def generate_assign(self, node):
-    # Use get_variable instead of directly accessing self.variables
     ptr = self.get_variable(node.name)
     if not ptr:
         raise ValueError(f"Variable {node.name} not declared")
 
-    var_type = self.variable_types.get(node.name)
+    var_type = self.get_variable_type(node.name)
     var_type = Type.map_to_internal_type(var_type)
 
     value = expression.generate_expression(self, node.value)
@@ -29,24 +28,18 @@ def generate_assign(self, node):
 
 
 def generate_declare_assign(self, node):
-    # Check if we're in global scope (not inside a function)
     is_global = self.func is None or self.func.name == "main" and len(self.scopes) == 1
 
     if node.type == Type.STRING:
         if is_global:
-            # Global string variable
             string_type = ir.ArrayType(ir.IntType(8), 256)
             global_var = ir.GlobalVariable(self.module, string_type, name=node.name)
             global_var.initializer = ir.Constant(string_type, bytearray(256))  # Initialize to zero
             global_var.linkage = 'common'
 
-            # Store in global_variables for tracking
-            self.global_variables[node.name] = global_var
-            self.variables[node.name] = global_var
-            self.variable_types[node.name] = node.type
+            self.declare_variable(node.name, global_var, Type.STRING)
 
             if node.value:
-                # Initialize with string value
                 value = expression.generate_expression(self, node.value)
 
                 if not hasattr(self, 'strcpy'):
@@ -57,14 +50,9 @@ def generate_declare_assign(self, node):
                 ptr = self.builder.bitcast(global_var, ir.PointerType(ir.IntType(8)))
                 self.builder.call(self.strcpy, [ptr, value])
         else:
-            # Local string variable
             buffer = self.builder.alloca(ir.ArrayType(ir.IntType(8), 256), name=node.name)
             ptr = self.builder.bitcast(buffer, ir.PointerType(ir.IntType(8)))
-            # Store in scope system
-            self.declare_variable(node.name, buffer)
-            # Also keep in global tracking for type information
-            self.variables[node.name] = buffer
-            self.variable_types[node.name] = node.type
+            self.declare_variable(node.name, buffer, node.type)
 
             if node.value:
                 value = expression.generate_expression(self, node.value)
@@ -80,35 +68,23 @@ def generate_declare_assign(self, node):
         llvm_type = Type.get_ir_type(internal_type)
 
         if is_global:
-            # Handle global variables by creating module-level globals
             global_var = ir.GlobalVariable(self.module, llvm_type, name=node.name)
 
-            # Initialize with default or provided value
             if node.value:
                 value = expression.generate_expression(self, node.value)
                 value = type_utils.convert_if_needed(self, value, internal_type)
-                # For constants, we need a constant initializer
                 if isinstance(value, ir.Constant):
                     global_var.initializer = value
                 else:
-                    # Default initialize and store the value later
                     global_var.initializer = ir.Constant(llvm_type, 0)
                     self.builder.store(value, global_var)
             else:
                 global_var.initializer = ir.Constant(llvm_type, 0)
 
-            # Register in global tracking
-            self.global_variables[node.name] = global_var
-            self.variables[node.name] = global_var
-            self.variable_types[node.name] = internal_type
+            self.declare_variable(node.name, global_var, internal_type)
         else:
-            # Local variables use stack allocation
             ptr = self.builder.alloca(llvm_type, name=node.name)
-            # Store in scope system
-            self.declare_variable(node.name, ptr)
-            # Also keep in global tracking for type information
-            self.variables[node.name] = ptr
-            self.variable_types[node.name] = internal_type
+            self.declare_variable(node.name, ptr, internal_type)
 
             if node.value:
                 value = expression.generate_expression(self, node.value)

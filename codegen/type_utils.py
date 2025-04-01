@@ -43,7 +43,6 @@ def convert_if_needed(self, value, target_type):
         return self.builder.fptosi(value, Type.get_ir_type(target_type), name="float_to_int")
     elif "float" in target_type and "float" in source_type:
         target_ir_type = Type.get_ir_type(target_type)
-        source_ir_type = value.type
 
         source_precision = Type.numeric_hierarchy.index(source_type)
         target_precision = Type.numeric_hierarchy.index(target_type)

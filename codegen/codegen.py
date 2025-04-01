@@ -7,14 +7,18 @@ from ast2 import AssignNode, DeclareAssignNode, PrintNode, ReadNode, DeclareArra
 from codegen import flow_ops, array_ops, io_ops, matrix_ops, variables, function_ops
 
 
+def is_declare_node(node):
+    return (isinstance(node, DeclareAssignNode)
+            or isinstance(node, DeclareMatrixNode)
+            or isinstance(node, DeclareArrayNode))
+
+
 class CodeGenerator:
     def __init__(self):
         self.module = ir.Module(name="JohnFKennedy")
         self.module.triple = "x86_64-pc-linux-gnu"
         self.builder = None
         self.func = None
-        self.variables = {}
-        self.variable_types = {}
         self.array_sizes = {}
         self.array_element_types = {}
         self.printf = None
@@ -42,20 +46,30 @@ class CodeGenerator:
         if len(self.scopes) > 1:
             self.scopes.pop()
 
-    def declare_variable(self, name, var_ptr):
-        self.scopes[-1][name] = var_ptr
+    def declare_variable(self, name, var_ptr, var_type):
+        self.scopes[-1][name] = (var_ptr, var_type)
         if len(self.scopes) == 1:
-            self.global_variables[name] = var_ptr
+            self.global_variables[name] = (var_ptr, var_type)
 
     def get_variable(self, name):
         for scope in reversed(self.scopes):
             if name in scope:
-                return scope[name]
+                return scope[name][0]
 
         if name in self.global_variables:
-            return self.global_variables[name]
+            return self.global_variables[name][0]
 
-        return None
+        raise ValueError(f"Variable {name} not declared")
+
+    def get_variable_type(self, name):
+        for scope in reversed(self.scopes):
+            if name in scope:
+                return scope[name][1]
+
+        if name in self.global_variables:
+            return self.global_variables[name][1]
+
+        raise ValueError(f"Variable {name} not declared")
 
     def generate_code(self, ast):
         for node in ast:
@@ -65,7 +79,7 @@ class CodeGenerator:
         self._create_function_declarations()
 
         for node in ast:
-            if isinstance(node, DeclareAssignNode) and not isinstance(node, FunctionDeclarationNode):
+            if (is_declare_node(node)) and not isinstance(node, FunctionDeclarationNode):
                 try:
                     if self.builder is None:
                         self._create_main_function()
@@ -79,24 +93,6 @@ class CodeGenerator:
                     traceback.print_exc()
                     exit(1)
 
-        if 'main' not in self.functions:
-            if self.func is None or self.func.name != "main":
-                self._create_main_function()
-
-            for node in ast:
-                if not isinstance(node, FunctionDeclarationNode) and not (
-                        isinstance(node, DeclareAssignNode) and not isinstance(node, FunctionDeclarationNode)):
-                    try:
-                        self.generate_node(node)
-                    except Exception as e:
-                        if None not in [node.line, node.column]:
-                            print(f"Error at {node.line}:{node.column}:")
-                        else:
-                            print(node)
-                        print(f"\tMessage: {str(e)} for node `{node}`")
-                        traceback.print_exc()
-                        exit(1)
-
         for node in ast:
             if isinstance(node, FunctionDeclarationNode):
                 try:
@@ -109,6 +105,24 @@ class CodeGenerator:
                     print(f"\tMessage: {str(e)}")
                     traceback.print_exc()
                     exit(1)
+
+        if 'main' not in self.functions:
+            if self.func is None or self.func.name != "main":
+                self._create_main_function()
+
+            for node in ast:
+                if not isinstance(node, FunctionDeclarationNode) and not (
+                        is_declare_node(node) and not isinstance(node, FunctionDeclarationNode)):
+                    try:
+                        self.generate_node(node)
+                    except Exception as e:
+                        if None not in [node.line, node.column]:
+                            print(f"Error at {node.line}:{node.column}:")
+                        else:
+                            print(node)
+                        print(f"\tMessage: {str(e)} for node `{node}`")
+                        traceback.print_exc()
+                        exit(1)
 
         if 'main' not in self.functions and not self.builder.block.is_terminated:
             self.builder.ret(ir.Constant(ir.IntType(32), 0))
@@ -149,9 +163,7 @@ class CodeGenerator:
         elif isinstance(node, ForNode):
             flow_ops.generate_for(self, node)
         elif isinstance(node, FunctionDeclarationNode):
-            self.push_scope()
             function_ops.generate_function_declaration(self, node)
-            self.pop_scope()
         elif isinstance(node, FunctionCallNode):
             function_ops.generate_function_call(self, node)
         elif isinstance(node, ReturnNode):

@@ -22,6 +22,8 @@ def generate_function_declaration(code_gen, node):
     block = func.append_basic_block(name="entry")
     code_gen.builder = ir.IRBuilder(block)
 
+    code_gen.declare_variable(name, func, node.return_type)
+
     code_gen.push_scope()
 
     for i, param in enumerate(node.parameters):
@@ -31,7 +33,7 @@ def generate_function_declaration(code_gen, node):
             string_buf = code_gen.builder.alloca(ir.ArrayType(ir.IntType(8), 256), name=f"{param.name}_buf")
             alloc = code_gen.builder.bitcast(string_buf, ir.PointerType(ir.IntType(8)))
 
-            code_gen.declare_variable(param.name, string_buf)
+            code_gen.declare_variable(param.name, string_buf, Type.STRING)
 
             if not hasattr(code_gen, 'strcpy'):
                 strcpy_ty = ir.FunctionType(ir.PointerType(ir.IntType(8)),
@@ -42,11 +44,7 @@ def generate_function_declaration(code_gen, node):
         else:
             alloc = code_gen.builder.alloca(Type.get_ir_type(param.type), name=param.name)
             code_gen.builder.store(func.args[i], alloc)
-            code_gen.declare_variable(param.name, alloc)
-
-        code_gen.variable_types[param.name] = param.type
-
-    code_gen.variable_types[name] = node.return_type
+            code_gen.declare_variable(param.name, alloc, param.type)
 
     for stmt in node.body:
         code_gen.generate_node(stmt)

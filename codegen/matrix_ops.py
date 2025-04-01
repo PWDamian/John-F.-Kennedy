@@ -14,16 +14,14 @@ def generate_declare_matrix(self, node):
     row_type = ir.ArrayType(llvm_element_type, node.cols)
     matrix_type = ir.ArrayType(row_type, node.rows)
     matrix_ptr = self.builder.alloca(matrix_type, name=node.name)
-
-    self.variables[node.name] = matrix_ptr
-    self.variable_types[node.name] = Type.ARRAY
+    self.declare_variable(node.name, matrix_ptr, Type.ARRAY)
     self.matrix_rows[node.name] = node.rows
     self.matrix_cols[node.name] = node.cols
     self.matrix_element_types[node.name] = element_type
 
 
 def generate_matrix_assign(self, node):
-    matrix_ptr = self.variables.get(node.name)
+    matrix_ptr = self.get_variable(node.name)
     if not matrix_ptr:
         raise ValueError(f"Matrix variable {node.name} not declared")
 

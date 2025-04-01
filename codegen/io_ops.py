@@ -8,7 +8,7 @@ def generate_print(self, node):
     value = expression.generate_expression(self, node.expression)
 
     if hasattr(node.expression, 'name'):
-        type_name = self.variable_types.get(node.expression.name)
+        type_name = self.get_variable_type(node.expression.name)
     elif hasattr(node.expression, 'array_element_types') and hasattr(node.expression, 'name'):
         element_type = self.array_element_types.get(node.expression.name)
         type_name = element_type if element_type else type_utils.get_type_from_value(value)
@@ -67,11 +67,11 @@ def generate_read(self, node):
         scanf_ty = ir.FunctionType(ir.IntType(32), [ir.PointerType(ir.IntType(8))], var_arg=True)
         self.scanf = ir.Function(self.module, scanf_ty, name="scanf")
 
-    ptr = self.variables.get(node.name)
+    ptr = self.get_variable(node.name)
     if not ptr:
         raise ValueError(f"Variable {node.name} not declared")
 
-    type_name = self.variable_types.get(node.name)
+    type_name = self.get_variable_type(node.name)
     if type_name == Type.STRING:
         ptr = self.builder.bitcast(ptr, ir.PointerType(ir.IntType(8)))
 

@@ -40,7 +40,7 @@ def generate_expression(self, node):
         if not ptr:
             raise ValueError(f"Variable {node.name} not declared")
 
-        if self.variable_types.get(node.name) == Type.STRING:
+        if self.get_variable_type(node.name) == Type.STRING:
             return self.builder.bitcast(ptr, ir.PointerType(ir.IntType(8)))
         else:
             return self.builder.load(ptr, name=node.name)

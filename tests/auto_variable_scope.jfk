@@ -1,7 +1,7 @@
-int x = 0;
+float x = 0;
 
 void testScope() {
-    print "(global in function) 0 = ";
+    print "(global in function) 0.0 = ";
     print x;
     int x = 5;
     if (true) {
@@ -14,5 +14,5 @@ void testScope() {
 }
 
 testScope();
-print "(global) 0 = ";
+print "(global) 0.0 = ";
 print x;

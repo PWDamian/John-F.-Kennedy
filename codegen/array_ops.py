@@ -5,7 +5,7 @@ from codegen import expression, type_utils
 
 
 def generate_array_assign(self, node):
-    array_ptr = self.variables.get(node.name)
+    array_ptr = self.get_variable(node.name)
     if not array_ptr:
         raise ValueError(f"Array variable {node.name} not declared")
 
@@ -32,8 +32,7 @@ def generate_declare_array(self, node):
 
     array_type = ir.ArrayType(llvm_element_type, node.size)
     array_ptr = self.builder.alloca(array_type, name=node.name)
+    self.declare_variable(node.name, array_ptr, Type.ARRAY)
 
-    self.variables[node.name] = array_ptr
-    self.variable_types[node.name] = Type.ARRAY
     self.array_sizes[node.name] = node.size
     self.array_element_types[node.name] = element_type
