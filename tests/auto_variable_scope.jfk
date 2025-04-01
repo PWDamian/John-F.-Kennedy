@@ -1,6 +1,8 @@
 int x = 0;
 
 void testScope() {
+    print "(global in function) 0 = ";
+    print x;
     int x = 5;
     if (true) {
         int x = 10;

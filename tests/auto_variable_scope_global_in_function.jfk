@@ -1,8 +1,7 @@
 int x = 0;
 
 void testScope() {
-    print "(global in function) 0 = ";
-    print x;
+
 }
 
 testScope();

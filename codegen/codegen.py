@@ -31,24 +31,30 @@ class CodeGenerator:
         self.matrix_element_types = {}
         self.block_counter = 0
         self.in_function = False
-        self.functions = {}  # Store function declarations
-        self.scopes = [{}]  # Stack of dicts: top is current scope
+        self.functions = {}
+        self.scopes = [{}]
+        self.global_variables = {}
 
     def push_scope(self):
         self.scopes.append({})
 
     def pop_scope(self):
-        self.scopes.pop()
+        if len(self.scopes) > 1:
+            self.scopes.pop()
 
     def declare_variable(self, name, var_ptr):
-        # Store variable in the topmost scope
         self.scopes[-1][name] = var_ptr
+        if len(self.scopes) == 1:
+            self.global_variables[name] = var_ptr
 
     def get_variable(self, name):
-        # Search from the innermost (top) scope outward
         for scope in reversed(self.scopes):
             if name in scope:
                 return scope[name]
+
+        if name in self.global_variables:
+            return self.global_variables[name]
+
         return None
 
     def generate_code(self, ast):
@@ -57,6 +63,39 @@ class CodeGenerator:
                 self.functions[node.name] = node
 
         self._create_function_declarations()
+
+        for node in ast:
+            if isinstance(node, DeclareAssignNode) and not isinstance(node, FunctionDeclarationNode):
+                try:
+                    if self.builder is None:
+                        self._create_main_function()
+                    self.generate_node(node)
+                except Exception as e:
+                    if None not in [node.line, node.column]:
+                        print(f"Error at {node.line}:{node.column}:")
+                    else:
+                        print(node)
+                    print(f"\tMessage: {str(e)} for node `{node}`")
+                    traceback.print_exc()
+                    exit(1)
+
+        if 'main' not in self.functions:
+            if self.func is None or self.func.name != "main":
+                self._create_main_function()
+
+            for node in ast:
+                if not isinstance(node, FunctionDeclarationNode) and not (
+                        isinstance(node, DeclareAssignNode) and not isinstance(node, FunctionDeclarationNode)):
+                    try:
+                        self.generate_node(node)
+                    except Exception as e:
+                        if None not in [node.line, node.column]:
+                            print(f"Error at {node.line}:{node.column}:")
+                        else:
+                            print(node)
+                        print(f"\tMessage: {str(e)} for node `{node}`")
+                        traceback.print_exc()
+                        exit(1)
 
         for node in ast:
             if isinstance(node, FunctionDeclarationNode):
@@ -71,41 +110,14 @@ class CodeGenerator:
                     traceback.print_exc()
                     exit(1)
 
-        # Create main function if it doesn't exist
-        if 'main' not in self.functions:
-            self._create_main_function()
-
-            # Process all non-function nodes in main
-            for node in ast:
-                if not isinstance(node, FunctionDeclarationNode):
-                    try:
-                        self.generate_node(node)
-                    except Exception as e:
-                        if None not in [node.line, node.column]:
-                            print(f"Error at {node.line}:{node.column}:")
-                        else:
-                            print(node)
-                        print(f"\tMessage: {str(e)} for node `{node}`")
-                        traceback.print_exc()
-                        exit(1)
-
-            # Add a return statement if main doesn't have one
-            if not self.builder.block.is_terminated:
-                self.builder.ret(ir.Constant(ir.IntType(32), 0))
+        if 'main' not in self.functions and not self.builder.block.is_terminated:
+            self.builder.ret(ir.Constant(ir.IntType(32), 0))
 
     def _create_function_declarations(self):
-        """Create LLVM IR declarations for all functions before defining them"""
         for name, func_node in self.functions.items():
-            # Get return type (using Type.VOID or Type.get_ir_type)
             return_type = Type.get_ir_type(func_node.return_type)
-
-            # Get parameter types
             param_types = [Type.get_ir_type(param.type) for param in func_node.parameters]
-
-            # Create function type and declaration
             func_type = ir.FunctionType(return_type, param_types)
-
-            # Check if function already exists (don't recreate it)
             if name not in self.module.globals:
                 ir.Function(self.module, func_type, name=name)
 
