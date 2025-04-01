@@ -22,15 +22,21 @@ def generate_if(self, node):
 
     self.builder.cbranch(cond_value, then_block, else_block if else_block else end_block)
 
+    # Then block with its own scope
     self.builder.position_at_end(then_block)
+    self.push_scope()  # Create new scope for the if block
     for stmt in node.body:
         self.generate_node(stmt)
+    self.pop_scope()  # Remove the scope when exiting the if block
     self.builder.branch(end_block)
 
+    # Else block with its own scope
     if else_block:
         self.builder.position_at_end(else_block)
+        self.push_scope()  # Create new scope for the else block
         for stmt in node.else_body:
             self.generate_node(stmt)
+        self.pop_scope()  # Remove the scope when exiting the else block
         self.builder.branch(end_block)
 
     self.builder.position_at_end(end_block)
@@ -58,9 +64,12 @@ def generate_for(self, node):
 
     self.builder.cbranch(cond_value, body_block, end_block)
 
+    # For loop body with its own scope
     self.builder.position_at_end(body_block)
+    self.push_scope()  # Create new scope for the for loop body
     for stmt in node.body:
         self.generate_node(stmt)
+    self.pop_scope()  # Remove the scope when exiting the for loop body
     self.builder.branch(update_block)
 
     self.builder.position_at_end(update_block)

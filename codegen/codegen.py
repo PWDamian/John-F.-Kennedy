@@ -32,17 +32,32 @@ class CodeGenerator:
         self.block_counter = 0
         self.in_function = False
         self.functions = {}  # Store function declarations
+        self.scopes = [{}]  # Stack of dicts: top is current scope
+
+    def push_scope(self):
+        self.scopes.append({})
+
+    def pop_scope(self):
+        self.scopes.pop()
+
+    def declare_variable(self, name, var_ptr):
+        # Store variable in the topmost scope
+        self.scopes[-1][name] = var_ptr
+
+    def get_variable(self, name):
+        # Search from the innermost (top) scope outward
+        for scope in reversed(self.scopes):
+            if name in scope:
+                return scope[name]
+        return None
 
     def generate_code(self, ast):
-        # First pass: collect function declarations
         for node in ast:
             if isinstance(node, FunctionDeclarationNode):
                 self.functions[node.name] = node
 
-        # Create forward declarations for all functions before processing main
         self._create_function_declarations()
 
-        # Second pass: generate code for all functions
         for node in ast:
             if isinstance(node, FunctionDeclarationNode):
                 try:
@@ -122,7 +137,9 @@ class CodeGenerator:
         elif isinstance(node, ForNode):
             flow_ops.generate_for(self, node)
         elif isinstance(node, FunctionDeclarationNode):
+            self.push_scope()
             function_ops.generate_function_declaration(self, node)
+            self.pop_scope()
         elif isinstance(node, FunctionCallNode):
             function_ops.generate_function_call(self, node)
         elif isinstance(node, ReturnNode):

@@ -1,0 +1,16 @@
+int x = 0;
+
+void testScope() {
+    int x = 5;
+    if (true) {
+        int x = 10;
+        print "(local if) 10 = ";
+        print x;
+    }
+    print "(local function) 5 = ";
+    print x;
+}
+
+testScope();
+print "(global) 0 = ";
+print x;

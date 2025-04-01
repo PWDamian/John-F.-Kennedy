@@ -36,7 +36,7 @@ def generate_expression(self, node):
         return ir.Constant(ir.IntType(1), 1 if node.value else 0)
 
     elif isinstance(node, VariableNode):
-        ptr = self.variables.get(node.name)
+        ptr = self.get_variable(node.name)
         if not ptr:
             raise ValueError(f"Variable {node.name} not declared")
 
@@ -102,7 +102,7 @@ def generate_expression(self, node):
         return self.builder.bitcast(string_const, ir.PointerType(ir.IntType(8)))
 
     elif isinstance(node, ArrayAccessNode):
-        array_ptr = self.variables.get(node.name)
+        array_ptr = self.get_variable(node.name)
         if not array_ptr:
             raise ValueError(f"Array variable {node.name} not declared")
 
@@ -124,7 +124,7 @@ def generate_expression(self, node):
         return self.builder.load(element_ptr, f"{node.name}_element")
 
     elif isinstance(node, MatrixAccessNode):
-        matrix_ptr = self.variables.get(node.name)
+        matrix_ptr = self.get_variable(node.name)
         if not matrix_ptr:
             raise ValueError(f"Matrix variable {node.name} not declared")
 

@@ -5,7 +5,8 @@ from codegen import expression, type_utils
 
 
 def generate_assign(self, node):
-    ptr = self.variables.get(node.name)
+    # Use get_variable instead of directly accessing self.variables
+    ptr = self.get_variable(node.name)
     if not ptr:
         raise ValueError(f"Variable {node.name} not declared")
 
@@ -31,6 +32,9 @@ def generate_declare_assign(self, node):
     if node.type == Type.STRING:
         buffer = self.builder.alloca(ir.ArrayType(ir.IntType(8), 256), name=node.name)
         ptr = self.builder.bitcast(buffer, ir.PointerType(ir.IntType(8)))
+        # Store in scope system
+        self.declare_variable(node.name, buffer)
+        # Also keep in global tracking for type information
         self.variables[node.name] = buffer
         self.variable_types[node.name] = node.type
 
@@ -47,6 +51,9 @@ def generate_declare_assign(self, node):
         internal_type = Type.map_to_internal_type(node.type)
         llvm_type = Type.get_ir_type(internal_type)
         ptr = self.builder.alloca(llvm_type, name=node.name)
+        # Store in scope system
+        self.declare_variable(node.name, ptr)
+        # Also keep in global tracking for type information
         self.variables[node.name] = ptr
         self.variable_types[node.name] = internal_type
 
