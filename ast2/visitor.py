@@ -2,7 +2,8 @@ from build.JohnFKennedyParser import JohnFKennedyParser
 from build.JohnFKennedyVisitor import JohnFKennedyVisitor
 
 from ast2 import *
-from ast2.nodes import ParameterNode
+from ast2.nodes import ParameterNode, MemberAccessNode
+from ast2.class_nodes import *
 
 
 class ASTBuilder(JohnFKennedyVisitor):
@@ -21,9 +22,16 @@ class ASTBuilder(JohnFKennedyVisitor):
         size = int(ctx.NUMBER().getText())
         return DeclareArrayNode(type_name, ctx.IDENTIFIER().getText(), size, ctx.start.line, ctx.start.column)
 
-    def visitAssignStatement(self,
-                             ctx: JohnFKennedyParser.AssignStatementContext):
-        return AssignNode(ctx.IDENTIFIER().getText(), self.visit(ctx.expression()), ctx.start.line, ctx.start.column)
+    def visitAssignStatement(self, ctx: JohnFKennedyParser.AssignStatementContext):
+        # Check if it's a member access
+        if len(ctx.IDENTIFIER()) > 1:
+            # It's a member access
+            object_name = ctx.IDENTIFIER(0).getText()
+            member_name = ctx.IDENTIFIER(1).getText()
+            return MemberAssignNode(object_name, member_name, self.visit(ctx.expression()), ctx.start.line, ctx.start.column)
+        else:
+            # It's a simple assignment
+            return AssignNode(ctx.IDENTIFIER(0).getText(), self.visit(ctx.expression()), ctx.start.line, ctx.start.column)
 
     def visitArrayAssignStatement(self,
                                   ctx: JohnFKennedyParser.ArrayAssignStatementContext):
@@ -147,6 +155,9 @@ class ASTBuilder(JohnFKennedyVisitor):
 
     def visitFloatType(self, ctx: JohnFKennedyParser.FloatTypeContext):
         return Type.FLOAT  # Alias for FLOAT64
+
+    def visitClassType(self, ctx: JohnFKennedyParser.ClassTypeContext):
+        return ctx.IDENTIFIER().getText()
 
     # Array types
     def visitArrayInt8Type(self, ctx: JohnFKennedyParser.ArrayInt8TypeContext):
@@ -304,3 +315,33 @@ class ASTBuilder(JohnFKennedyVisitor):
 
     def visitFunctionCallExpr(self, ctx: JohnFKennedyParser.FunctionCallExprContext):
         return self.visit(ctx.functionCall())
+
+    def visitClassDeclaration(self, ctx: JohnFKennedyParser.ClassDeclarationContext):
+        name = ctx.IDENTIFIER().getText()
+        members = []
+        
+        for member in ctx.declareAssignStatement():
+            members.append(self.visit(member))
+            
+        for member in ctx.functionDeclaration():
+            members.append(self.visit(member))
+            
+        return ClassDeclaration(name, members, ctx.start.line, ctx.start.column)
+
+    def visitMemberAccessExpr(self, ctx: JohnFKennedyParser.MemberAccessExprContext):
+        object_name = ctx.IDENTIFIER(0).getText()
+        member_name = ctx.IDENTIFIER(1).getText()
+        return MemberAccessNode(object_name, member_name, ctx.start.line, ctx.start.column)
+        
+    def visitMethodCallExpr(self, ctx: JohnFKennedyParser.MethodCallExprContext):
+        object_name = ctx.IDENTIFIER(0).getText()
+        method_name = ctx.IDENTIFIER(1).getText()
+        
+        arguments = []
+        if ctx.argumentList():
+            arguments = self.visit(ctx.argumentList())
+            
+        return MethodCallNode(object_name, method_name, arguments, ctx.start.line, ctx.start.column)
+        
+    def visitArgumentList(self, ctx: JohnFKennedyParser.ArgumentListContext):
+        return [self.visit(expr) for expr in ctx.expression()]

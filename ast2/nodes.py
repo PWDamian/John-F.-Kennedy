@@ -1,4 +1,5 @@
 from .types import Type
+from llvmlite import ir
 
 OPERATOR_PRECEDENCE = {
     '+': 1,
@@ -295,6 +296,45 @@ class ReturnNode(ASTNode):
         return f"return {self.value if self.value is not None else ''}"
 
 
+class MemberAccessNode(ASTNode):
+    def __init__(self, object_name, member_name, line: int, column: int):
+        super().__init__(line, column)
+        self.object_name = object_name
+        self.member_name = member_name
+
+    def __str__(self):
+        return f"{self.object_name}.{self.member_name}"
+
+
+class MethodCallNode(ASTNode):
+    def __init__(self, object_name, method_name, arguments, line: int, column: int):
+        super().__init__(line, column)
+        self.object_name = object_name
+        self.method_name = method_name
+        self.arguments = arguments
+
+    def __str__(self):
+        args_str = ", ".join(str(arg) for arg in self.arguments)
+        return f"{self.object_name}.{self.method_name}({args_str})"
+
+
+class MemberAssignNode(ASTNode):
+    def __init__(self, object_name: str, member_name: str, value, line: int, column: int):
+        super().__init__(line, column)
+        self.object_name = object_name
+        self.member_name = member_name
+        self.value = value
+        self.line = line
+        self.column = column
+
+    def __str__(self):
+        return f"{self.object_name}.{self.member_name} = {self.value}"
+
+    def generate_ir(self, module: ir.Module, builder: ir.IRBuilder):
+        # This will be implemented in the code generator
+        pass
+
+
 def print_ast_as_tree(node, indent=0):
     prefix = "  " * indent
 
@@ -419,5 +459,14 @@ def print_ast_as_tree(node, indent=0):
             print_ast_as_tree(node.value, indent + 1)
         else:
             print(f"{prefix}  void")
+    elif isinstance(node, MemberAccessNode):
+        print(f"{prefix}MemberAccess: {node.object_name}.{node.member_name}")
+    elif isinstance(node, MethodCallNode):
+        print(f"{prefix}MethodCall: {node.object_name}.{node.method_name}")
+        print(f"{prefix}  Arguments:")
+        for arg in node.arguments:
+            print_ast_as_tree(arg, indent + 2)
+    elif isinstance(node, MemberAssignNode):
+        print(f"{prefix}MemberAssign: {node.object_name}.{node.member_name} = {node.value}")
     else:
         print(f"{prefix}Unknown node type: {type(node)}")

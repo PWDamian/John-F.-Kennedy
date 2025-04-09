@@ -3,8 +3,10 @@ import traceback
 from llvmlite import ir
 
 from ast2 import AssignNode, DeclareAssignNode, PrintNode, ReadNode, DeclareArrayNode, ArrayAssignNode, \
-    DeclareMatrixNode, MatrixAssignNode, IfNode, ForNode, FunctionDeclarationNode, FunctionCallNode, ReturnNode, Type
-from codegen import flow_ops, array_ops, io_ops, matrix_ops, variables, function_ops
+    DeclareMatrixNode, MatrixAssignNode, IfNode, ForNode, FunctionDeclarationNode, FunctionCallNode, ReturnNode, Type, \
+    MemberAccessNode, MemberAssignNode, MethodCallNode
+from ast2.class_nodes import ClassDeclaration
+from codegen import flow_ops, array_ops, io_ops, matrix_ops, variables, function_ops, class_ops, expression
 
 
 def is_declare_node(node):
@@ -168,6 +170,22 @@ class CodeGenerator:
             function_ops.generate_function_call(self, node)
         elif isinstance(node, ReturnNode):
             function_ops.generate_return(self, node)
+        elif isinstance(node, ClassDeclaration):
+            class_ops.generate_class_declaration(self, node)
+        elif isinstance(node, MemberAccessNode):
+            class_ops.generate_member_access(self, node)
+        elif isinstance(node, MemberAssignNode):
+            class_ops.generate_member_assign(self, node)
+        elif isinstance(node, MethodCallNode):
+            # Get the object instance and class name
+            instance = self.get_variable(node.object_name)
+            class_name = self.get_variable_type(node.object_name)
+            
+            # Generate arguments
+            args = [expression.generate_expression(self, arg) for arg in node.arguments]
+            
+            # Call the method
+            class_ops.generate_method_call(self, instance, class_name, node.method_name, args)
 
     def get_ir(self):
         return str(self.module)

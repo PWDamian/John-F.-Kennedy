@@ -17,6 +17,7 @@ class Type:
     ARRAY = "array"
     BOOL = "bool"
     VOID = "void"  # Add void type constant
+    CLASS = "class"  # Add class type constant
 
     # Type hierarchy for numeric types (from lowest to highest precision)
     numeric_hierarchy = [
@@ -77,5 +78,21 @@ class Type:
             return ir.DoubleType()
         elif type == cls.STRING:
             return ir.PointerType(ir.IntType(8))
+        elif cls.is_class_type(type):
+            # Handle class types as pointers to structures
+            # In a proper implementation, we would look up the actual structure type
+            # based on the class name
+            return ir.PointerType(ir.IntType(8))
         else:
             raise ValueError(f"Unsupported type in type get ir: {type}")
+
+    @classmethod
+    def is_class_type(cls, type_name):
+        # A class type is any type that's not one of our predefined types
+        # This is a simple heuristic that will work for now
+        predefined_types = [
+            cls.INT8, cls.INT16, cls.INT32, cls.INT64, cls.INT,
+            cls.FLOAT16, cls.FLOAT32, cls.FLOAT64, cls.FLOAT,
+            cls.STRING, cls.ARRAY, cls.BOOL, cls.VOID
+        ]
+        return type_name not in predefined_types

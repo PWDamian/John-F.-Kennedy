@@ -5,8 +5,8 @@ from llvmlite import ir
 
 from ast2 import Type
 from ast2.nodes import NumberNode, BooleanNode, VariableNode, StringValueNode, ArrayAccessNode, MatrixAccessNode, \
-    BinaryOpNode, ComparisonNode, LogicalOpNode, LogicalNotNode, FunctionCallNode
-from codegen import logical_ops, type_utils
+    BinaryOpNode, ComparisonNode, LogicalOpNode, LogicalNotNode, FunctionCallNode, MemberAccessNode, MethodCallNode
+from codegen import logical_ops, type_utils, function_ops, array_ops, matrix_ops, class_ops
 from codegen.function_ops import generate_function_call
 
 
@@ -187,8 +187,22 @@ def generate_expression(self, node):
                 '!=': self.builder.fcmp_ordered('!=', left, right)
             }[node.op]
 
+    elif isinstance(node, MemberAccessNode):
+        return class_ops.generate_member_access(self, node)
+
+    elif isinstance(node, MethodCallNode):
+        # Get the object instance and class name
+        instance = self.get_variable(node.object_name)
+        class_name = self.get_variable_type(node.object_name)
+        
+        # Generate arguments
+        args = [generate_expression(self, arg) for arg in node.arguments]
+        
+        # Call the method
+        return class_ops.generate_method_call(self, instance, class_name, node.method_name, args)
+
     elif isinstance(node, FunctionCallNode):
-        result = generate_function_call(self, node)
+        result = function_ops.generate_function_call(self, node)
         if result is None:
             raise ValueError(f"Cannot use void function '{node.name}' in an expression")
         return result

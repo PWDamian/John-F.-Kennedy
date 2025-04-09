@@ -11,6 +11,7 @@ program : (topLevelDeclaration)+ EOF;
 topLevelDeclaration
     : statement
     | functionDeclaration
+    | classDeclaration
     ;
 
 type
@@ -26,6 +27,7 @@ type
     | 'float'     # FloatType    // Alias for float64
     | 'string'    # StringType
     | 'bool'      # BoolType     // Boolean type
+    | IDENTIFIER  # ClassType    // Class type
     ;
 
 arrayType
@@ -67,13 +69,14 @@ statement
     | ifStatement
     | forLoop
     | functionCallStatement
+    | methodCallStatement
     | returnStatement
     ;
 
 declareAssignStatement : type IDENTIFIER ('=' expression)? ';';
 declareArrayStatement : arrayType IDENTIFIER '[' NUMBER ']' ';';
 declareMatrixStatement : matrixType IDENTIFIER '[' NUMBER ']' '[' NUMBER ']' ';';
-assignStatement : IDENTIFIER '=' expression ';';
+assignStatement : (IDENTIFIER | IDENTIFIER '.' IDENTIFIER) '=' expression ';';
 arrayAssignStatement : IDENTIFIER '[' expression ']' '=' expression ';';
 matrixAssignStatement : IDENTIFIER '[' expression ']' '[' expression ']' '=' expression ';';
 printStatement : 'print' expression ';';
@@ -137,6 +140,8 @@ primaryExpression
     | IDENTIFIER                                     # IdentifierExpr
     | IDENTIFIER '[' expression ']'                  # ArrayAccessExpr
     | IDENTIFIER '[' expression ']' '[' expression ']'  # MatrixAccessExpr
+    | IDENTIFIER '.' IDENTIFIER                      # MemberAccessExpr
+    | methodCall                                     # MethodCallExpr
     | QSTRING                                        # QstringExpr
     | '(' expression ')'                             # ParenExpr
     | functionCall                                   # FunctionCallExpr
@@ -145,6 +150,11 @@ primaryExpression
 functionDeclaration
     : type IDENTIFIER '(' parameterList? ')' '{' statement* '}'
     ;
+
+classDeclaration
+    : 'class' IDENTIFIER '{' (declareAssignStatement | functionDeclaration)* '}'
+    ;
+
 
 parameterList
     : parameter (',' parameter)*
@@ -164,6 +174,14 @@ functionCallStatement
 
 functionCall
     : IDENTIFIER '(' argumentList? ')'
+    ;
+
+methodCallStatement
+    : methodCall ';'
+    ;
+
+methodCall
+    : IDENTIFIER '.' IDENTIFIER '(' argumentList? ')'
     ;
 
 argumentList

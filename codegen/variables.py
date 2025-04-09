@@ -30,6 +30,54 @@ def generate_assign(self, node):
 def generate_declare_assign(self, node):
     is_global = self.func is None or self.func.name == "main" and len(self.scopes) == 1
 
+    # Special handling for class types
+    if hasattr(self, 'class_declarations') and node.type in self.class_declarations:
+        # This is a class variable declaration
+        class_decl = self.class_declarations[node.type]
+        
+        # Make sure we have the class struct type before using it
+        if not class_decl.ir_struct_type:
+            class_decl.get_ir_type(self.module)
+            
+        # Get the LLVM struct type directly
+        struct_type = class_decl.ir_struct_type
+        
+        if is_global:
+            # For global variables, create a global struct directly
+            global_var = ir.GlobalVariable(self.module, struct_type, name=node.name)
+            
+            # Create element initializers - zero for all elements
+            zeros = []
+            for elem_type in struct_type.elements:
+                zeros.append(ir.Constant(elem_type, 0))
+                
+            # Create initializer for the struct
+            zero_init = ir.Constant(struct_type, zeros)
+            global_var.initializer = zero_init
+            global_var.linkage = 'common'
+            
+            # Store in the symbol table
+            self.declare_variable(node.name, global_var, node.type)
+        else:
+            # Local variable - allocate the struct directly
+            ptr = self.builder.alloca(struct_type, name=node.name)
+            
+            # Initialize fields to zero if needed
+            for i, elem_type in enumerate(struct_type.elements):
+                # Get pointer to field
+                indices = [ir.Constant(ir.IntType(32), 0), ir.Constant(ir.IntType(32), i)]
+                field_ptr = self.builder.gep(ptr, indices, inbounds=True)
+                
+                # Initialize to zero
+                zero = ir.Constant(elem_type, 0)
+                self.builder.store(zero, field_ptr)
+            
+            # Store in the symbol table
+            self.declare_variable(node.name, ptr, node.type)
+        
+        return
+    
+    # Original code for non-class types
     if node.type == Type.STRING:
         if is_global:
             string_type = ir.ArrayType(ir.IntType(8), 256)
