@@ -1,0 +1,15 @@
+class Point {
+    int x;
+    int y;
+
+    void move(int dx, int dy) {
+        x = x + dx;
+        y = y + dy;
+    }
+}
+
+// Usage
+Point p;
+p.x = 10;      // This should work now
+p.y = 20;      // This should work now
+p.move(5, 5);  // Method call
