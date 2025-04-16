@@ -211,6 +211,58 @@ class DeclareMatrixNode(ASTNode):
         return f"{self.type} {self.name}[{self.rows}][{self.cols}]"
 
 
+class StructFieldNode(ASTNode):
+    def __init__(self, type_name, names, line: int, column: int):
+        super().__init__(line, column)
+        self.type = type_name
+        self.names = names  # List of field names of this type
+
+    def __str__(self):
+        return f"{self.type} {', '.join(self.names)}"
+
+
+class StructDeclarationNode(ASTNode):
+    def __init__(self, name, fields, line: int, column: int):
+        super().__init__(line, column)
+        self.name = name
+        self.fields = fields  # List of StructFieldNode
+
+    def __str__(self):
+        fields_str = ", ".join(str(field) for field in self.fields)
+        return f"struct {self.name} {{ {fields_str} }}"
+
+
+class DeclareStructNode(ASTNode):
+    def __init__(self, struct_type, name, line: int, column: int):
+        super().__init__(line, column)
+        self.struct_type = struct_type
+        self.name = name
+
+    def __str__(self):
+        return f"{self.struct_type} {self.name}"
+
+
+class StructFieldAccessNode(ASTNode):
+    def __init__(self, struct_name, field_name, line: int, column: int):
+        super().__init__(line, column)
+        self.struct_name = struct_name
+        self.field_name = field_name
+
+    def __str__(self):
+        return f"{self.struct_name}.{self.field_name}"
+
+
+class StructFieldAssignNode(ASTNode):
+    def __init__(self, struct_name, field_name, value, line: int, column: int):
+        super().__init__(line, column)
+        self.struct_name = struct_name
+        self.field_name = field_name
+        self.value = value
+
+    def __str__(self):
+        return f"{self.struct_name}.{self.field_name} = {self.value}"
+
+
 class ReadNode(ASTNode):
     def __init__(self, name, line: int, column: int):
         super().__init__(line, column)
@@ -419,5 +471,17 @@ def print_ast_as_tree(node, indent=0):
             print_ast_as_tree(node.value, indent + 1)
         else:
             print(f"{prefix}  void")
+    elif isinstance(node, StructFieldNode):
+        print(f"{prefix}StructField: {node.type} {', '.join(node.names)}")
+    elif isinstance(node, StructDeclarationNode):
+        print(f"{prefix}StructDeclaration: {node.name}")
+        for field in node.fields:
+            print_ast_as_tree(field, indent + 2)
+    elif isinstance(node, DeclareStructNode):
+        print(f"{prefix}DeclareStruct: {node.struct_type} {node.name}")
+    elif isinstance(node, StructFieldAccessNode):
+        print(f"{prefix}StructFieldAccess: {node.struct_name}.{node.field_name}")
+    elif isinstance(node, StructFieldAssignNode):
+        print(f"{prefix}StructFieldAssign: {node.struct_name}.{node.field_name} = {node.value}")
     else:
         print(f"{prefix}Unknown node type: {type(node)}")

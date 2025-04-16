@@ -11,6 +11,7 @@ program : (topLevelDeclaration)+ EOF;
 topLevelDeclaration
     : statement
     | functionDeclaration
+    | structDeclaration
     ;
 
 type
@@ -26,6 +27,7 @@ type
     | 'float'     # FloatType    // Alias for float64
     | 'string'    # StringType
     | 'bool'      # BoolType     // Boolean type
+    | IDENTIFIER  # StructType   // For struct types
     ;
 
 arrayType
@@ -62,6 +64,8 @@ statement
     | declareMatrixStatement
     | arrayAssignStatement
     | matrixAssignStatement
+    | structFieldAssignStatement
+    | declareStructStatement
     | printStatement
     | readStatement
     | ifStatement
@@ -73,9 +77,11 @@ statement
 declareAssignStatement : type IDENTIFIER ('=' expression)? ';';
 declareArrayStatement : arrayType IDENTIFIER '[' NUMBER ']' ';';
 declareMatrixStatement : matrixType IDENTIFIER '[' NUMBER ']' '[' NUMBER ']' ';';
+declareStructStatement : 'struct' IDENTIFIER IDENTIFIER ';';
 assignStatement : IDENTIFIER '=' expression ';';
 arrayAssignStatement : IDENTIFIER '[' expression ']' '=' expression ';';
 matrixAssignStatement : IDENTIFIER '[' expression ']' '[' expression ']' '=' expression ';';
+structFieldAssignStatement : IDENTIFIER '.' IDENTIFIER '=' expression ';';
 printStatement : 'print' expression ';';
 readStatement : 'read' IDENTIFIER ';';
 
@@ -137,6 +143,7 @@ primaryExpression
     | IDENTIFIER                                     # IdentifierExpr
     | IDENTIFIER '[' expression ']'                  # ArrayAccessExpr
     | IDENTIFIER '[' expression ']' '[' expression ']'  # MatrixAccessExpr
+    | IDENTIFIER '.' IDENTIFIER                      # StructFieldAccessExpr
     | QSTRING                                        # QstringExpr
     | '(' expression ')'                             # ParenExpr
     | functionCall                                   # FunctionCallExpr
@@ -177,4 +184,13 @@ FLOAT_NUMBER : [0-9]+'.'[0-9]+ ;
 WS : [ \t\r\n]+ -> skip ;
 CMT : '//' ~( '\r' | '\n' )* -> skip;
 QSTRING : '"'([a-zA-Z0-9`~!@#$%^&*()_+\-=:;"'<>,.?/|] | ' ')*'"';
+
+// Add struct declaration and struct related rules
+structDeclaration
+    : 'struct' IDENTIFIER '{' structField+ '}' ';'
+    ;
+
+structField
+    : type IDENTIFIER (',' IDENTIFIER)* ';'
+    ;
 

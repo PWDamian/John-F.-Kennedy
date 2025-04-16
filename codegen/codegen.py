@@ -3,14 +3,16 @@ import traceback
 from llvmlite import ir
 
 from ast2 import AssignNode, DeclareAssignNode, PrintNode, ReadNode, DeclareArrayNode, ArrayAssignNode, \
-    DeclareMatrixNode, MatrixAssignNode, IfNode, ForNode, FunctionDeclarationNode, FunctionCallNode, ReturnNode, Type
-from codegen import flow_ops, array_ops, io_ops, matrix_ops, variables, function_ops
+    DeclareMatrixNode, MatrixAssignNode, IfNode, ForNode, FunctionDeclarationNode, FunctionCallNode, ReturnNode, \
+    Type, StructDeclarationNode, DeclareStructNode, StructFieldAssignNode, StructFieldAccessNode
+from codegen import flow_ops, array_ops, io_ops, matrix_ops, variables, function_ops, struct_ops
 
 
 def is_declare_node(node):
     return (isinstance(node, DeclareAssignNode)
             or isinstance(node, DeclareMatrixNode)
-            or isinstance(node, DeclareArrayNode))
+            or isinstance(node, DeclareArrayNode)
+            or isinstance(node, DeclareStructNode))
 
 
 class CodeGenerator:
@@ -72,12 +74,16 @@ class CodeGenerator:
         raise ValueError(f"Variable {name} not declared")
 
     def generate_code(self, ast):
+        # First pass: register function and struct types
         for node in ast:
             if isinstance(node, FunctionDeclarationNode):
                 self.functions[node.name] = node
+            if isinstance(node, StructDeclarationNode):
+                struct_ops.generate_struct_declaration(self, node)
 
         self._create_function_declarations()
 
+        # Second pass: handle variable declarations
         for node in ast:
             if (is_declare_node(node)) and not isinstance(node, FunctionDeclarationNode):
                 try:
@@ -93,6 +99,7 @@ class CodeGenerator:
                     traceback.print_exc()
                     exit(1)
 
+        # Third pass: handle function definitions
         for node in ast:
             if isinstance(node, FunctionDeclarationNode):
                 try:
@@ -106,12 +113,13 @@ class CodeGenerator:
                     traceback.print_exc()
                     exit(1)
 
+        # Fourth pass: handle statements in main
         if 'main' not in self.functions:
             if self.func is None or self.func.name != "main":
                 self._create_main_function()
 
             for node in ast:
-                if not isinstance(node, FunctionDeclarationNode) and not (
+                if not isinstance(node, FunctionDeclarationNode) and not isinstance(node, StructDeclarationNode) and not (
                         is_declare_node(node) and not isinstance(node, FunctionDeclarationNode)):
                     try:
                         self.generate_node(node)
@@ -168,6 +176,15 @@ class CodeGenerator:
             function_ops.generate_function_call(self, node)
         elif isinstance(node, ReturnNode):
             function_ops.generate_return(self, node)
+        elif isinstance(node, StructDeclarationNode):
+            struct_ops.generate_struct_declaration(self, node)
+        elif isinstance(node, DeclareStructNode):
+            struct_ops.generate_declare_struct(self, node)
+        elif isinstance(node, StructFieldAssignNode):
+            struct_ops.generate_struct_field_assign(self, node)
+        elif isinstance(node, StructFieldAccessNode):
+            # Return the result of the field access
+            return struct_ops.generate_struct_field_access(self, node)
 
     def get_ir(self):
         return str(self.module)

@@ -1,0 +1,55 @@
+// Comprehensive test for structs in JFK language
+
+// Define a Point struct for 2D coordinates
+struct Point {
+    int x;
+    int y;
+};
+
+// Define a Rectangle struct
+struct Rectangle {
+    int width;
+    int height;
+    int area;
+};
+
+// Create a Point instance
+struct Point p1;
+p1.x = 3;
+p1.y = 4;
+
+print "Point p1:";
+print p1.x;
+print p1.y;
+
+// Create another Point instance
+struct Point p2;
+p2.x = 7;
+p2.y = 24;
+
+print "Point p2:";
+print p2.x;
+print p2.y;
+
+// Create a Rectangle
+struct Rectangle rect;
+rect.width = 10;
+rect.height = 20;
+
+// Calculate area manually
+rect.area = rect.width * rect.height;
+
+print "Rectangle:";
+print rect.width;
+print rect.height;
+print rect.area;
+
+// Modify a field and recalculate
+rect.width = 5;
+rect.height = 6;
+rect.area = rect.width * rect.height;
+
+print "Updated rectangle:";
+print rect.width;
+print rect.height;
+print rect.area; 

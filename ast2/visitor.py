@@ -1,5 +1,7 @@
 from build.JohnFKennedyParser import JohnFKennedyParser
 from build.JohnFKennedyVisitor import JohnFKennedyVisitor
+from antlr4 import InputStream, CommonTokenStream, ParseTreeVisitor
+from antlr4.Token import CommonToken
 
 from ast2 import *
 from ast2.nodes import ParameterNode
@@ -304,3 +306,67 @@ class ASTBuilder(JohnFKennedyVisitor):
 
     def visitFunctionCallExpr(self, ctx: JohnFKennedyParser.FunctionCallExprContext):
         return self.visit(ctx.functionCall())
+
+    def visitStructDeclaration(self, ctx: JohnFKennedyParser.StructDeclarationContext):
+        # Get struct name and position info
+        struct_name = ctx.IDENTIFIER().getText()
+        line = ctx.start.line
+        column = ctx.start.column
+        
+        # Process fields
+        fields = []
+        for field_ctx in ctx.structField():
+            fields.append(self.visitStructField(field_ctx))
+        
+        return StructDeclarationNode(struct_name, fields, line, column)
+    
+    def visitStructField(self, ctx: JohnFKennedyParser.StructFieldContext):
+        # Get type name
+        type_ctx = ctx.type_()
+        type_name = self.visit(type_ctx)
+        
+        # Get field names (can be multiple)
+        field_names = [ident.getText() for ident in ctx.IDENTIFIER()]
+        
+        # Get position
+        line = ctx.start.line
+        column = ctx.start.column
+        
+        return StructFieldNode(type_name, field_names, line, column)
+    
+    def visitDeclareStructStatement(self, ctx: JohnFKennedyParser.DeclareStructStatementContext):
+        # Get struct type and variable name
+        struct_type = ctx.IDENTIFIER(0).getText()
+        var_name = ctx.IDENTIFIER(1).getText()
+        
+        # Get position
+        line = ctx.start.line
+        column = ctx.start.column
+        
+        return DeclareStructNode(struct_type, var_name, line, column)
+    
+    def visitStructFieldAccessExpr(self, ctx: JohnFKennedyParser.StructFieldAccessExprContext):
+        # Get struct name and field name
+        struct_name = ctx.IDENTIFIER(0).getText()
+        field_name = ctx.IDENTIFIER(1).getText()
+        
+        # Get position
+        line = ctx.start.line
+        column = ctx.start.column
+        
+        return StructFieldAccessNode(struct_name, field_name, line, column)
+    
+    def visitStructFieldAssignStatement(self, ctx: JohnFKennedyParser.StructFieldAssignStatementContext):
+        # Get struct name, field name, and value
+        struct_name = ctx.IDENTIFIER(0).getText()
+        field_name = ctx.IDENTIFIER(1).getText()
+        value = self.visit(ctx.expression())
+        
+        # Get position
+        line = ctx.start.line
+        column = ctx.start.column
+        
+        return StructFieldAssignNode(struct_name, field_name, value, line, column)
+    
+    def visitStructType(self, ctx: JohnFKennedyParser.StructTypeContext):
+        return ctx.IDENTIFIER().getText()

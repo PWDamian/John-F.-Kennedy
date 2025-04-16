@@ -17,12 +17,40 @@ class Type:
     ARRAY = "array"
     BOOL = "bool"
     VOID = "void"  # Add void type constant
+    STRUCT = "struct"  # Add struct type
 
     # Type hierarchy for numeric types (from lowest to highest precision)
     numeric_hierarchy = [
         BOOL, INT8, INT16, INT32, INT64,
         FLOAT16, FLOAT32, FLOAT64
     ]
+
+    # Store struct definitions
+    struct_types = {}
+
+    @classmethod
+    def register_struct_type(cls, name, fields):
+        """
+        Register a struct type definition
+        fields: dict mapping field names to their types
+        """
+        cls.struct_types[name] = fields
+
+    @classmethod
+    def is_struct_type(cls, type_name):
+        """Check if a type name refers to a struct"""
+        return type_name in cls.struct_types
+
+    @classmethod
+    def get_struct_field_type(cls, struct_type, field_name):
+        """Get the type of a struct field"""
+        if not cls.is_struct_type(struct_type):
+            raise ValueError(f"Unknown struct type: {struct_type}")
+        
+        if field_name not in cls.struct_types[struct_type]:
+            raise ValueError(f"Field {field_name} not found in struct {struct_type}")
+            
+        return cls.struct_types[struct_type][field_name]
 
     @classmethod
     def map_to_internal_type(cls, type_name):
@@ -77,5 +105,9 @@ class Type:
             return ir.DoubleType()
         elif type == cls.STRING:
             return ir.PointerType(ir.IntType(8))
+        elif cls.is_struct_type(type):
+            # For structs, we just use an opaque pointer type
+            # The actual struct type will be defined separately in struct_ops.py
+            return ir.IntType(64)  # Use a standard integer as placeholder
         else:
             raise ValueError(f"Unsupported type in type get ir: {type}")
