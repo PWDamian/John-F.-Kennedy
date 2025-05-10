@@ -69,9 +69,10 @@ class StringValueNode(ASTNode):
 
 
 class VariableNode(ASTNode):
-    def __init__(self, name, line: int, column: int):
+    def __init__(self, name, line: int, column: int, type_name=None):
         super().__init__(line, column)
         self.name = name
+        self.type_name = type_name
 
     def __str__(self):
         return f"Variable({self.name})"
@@ -105,6 +106,15 @@ class BinaryOpNode(ASTNode):
         self.op = op
         self.right = right
         self.precedence = OPERATOR_PRECEDENCE.get(op, 0)
+        
+        # Try to infer the type from the operands
+        try:
+            left_type = Type.infer_type_from_value(left)
+            right_type = Type.infer_type_from_value(right)
+            self.type_name = Type.get_common_type(left_type, right_type)
+        except ValueError:
+            # If we can't infer the type, leave it as None
+            self.type_name = None
 
     def __str__(self):
         return f"({self.left} {self.op} {self.right})"
@@ -181,11 +191,18 @@ class DeclareAssignNode(ASTNode):
         self.type_name = type_name
         self.name = name
         self.value = value
+        
+        # If the value is a VariableNode, store its type
+        if isinstance(value, VariableNode):
+            value.type_name = type_name
 
     def accept(self, visitor):
         # If this is a var declaration, infer the type from the value
         if self.type_name == Type.VAR and self.value is not None:
             self.type_name = Type.infer_type_from_value(self.value)
+            # If the value is a VariableNode, update its type
+            if isinstance(self.value, VariableNode):
+                self.value.type_name = self.type_name
         return visitor.visit_declare_assign(self)
 
     def __str__(self):

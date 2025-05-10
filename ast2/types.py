@@ -1,7 +1,5 @@
 from llvmlite import ir
 
-from ast2 import VariableNode
-
 
 class Type:
     INT8 = "int8"
@@ -36,7 +34,7 @@ class Type:
         from .nodes import (
             NumberNode, BooleanNode, StringValueNode, ArrayAccessNode,
             MatrixAccessNode, BinaryOpNode, LogicalOpNode, ComparisonNode,
-            LogicalNotNode, StructFieldAccessNode
+            LogicalNotNode, StructFieldAccessNode, VariableNode
         )
         """Infer the type from a value node"""
         if isinstance(value, NumberNode):
@@ -54,6 +52,13 @@ class Type:
             return cls.ARRAY  # For now, treat matrices as arrays
         elif isinstance(value, StructFieldAccessNode):
             return cls.STRUCT
+        elif isinstance(value, VariableNode):
+            # For variables, we need to get their declared type
+            # This assumes the variable has been declared and its type is stored
+            # in the node itself
+            if not hasattr(value, 'type_name'):
+                raise ValueError(f"Variable {value.name} has no type information")
+            return value.type_name
         elif isinstance(value, BinaryOpNode):
             # For binary operations, infer type from operands
             left_type = cls.infer_type_from_value(value.left)

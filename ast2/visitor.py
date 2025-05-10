@@ -8,6 +8,10 @@ from ast2.nodes import ParameterNode
 
 
 class ASTBuilder(JohnFKennedyVisitor):
+    def __init__(self):
+        super().__init__()
+        self.var_types = {}
+
     def visitProgram(self, ctx: JohnFKennedyParser.ProgramContext):
         return [self.visit(decl) for decl in ctx.topLevelDeclaration()]
 
@@ -15,7 +19,11 @@ class ASTBuilder(JohnFKennedyVisitor):
                                     ctx: JohnFKennedyParser.DeclareAssignStatementContext):
         type_name = self.visit(ctx.type_())
         value = self.visit(ctx.expression()) if ctx.expression() else None
-        return DeclareAssignNode(type_name, ctx.IDENTIFIER().getText(), ctx.start.line, ctx.start.column, value)
+        var_name = ctx.IDENTIFIER().getText()
+        node = DeclareAssignNode(type_name, var_name, ctx.start.line, ctx.start.column, value)
+        # Record the type in the symbol table
+        self.var_types[var_name] = node.type_name
+        return node
 
     def visitDeclareArrayStatement(self,
                                    ctx: JohnFKennedyParser.DeclareArrayStatementContext):
@@ -51,7 +59,9 @@ class ASTBuilder(JohnFKennedyVisitor):
         return BooleanNode(value == 'true', ctx.start.line, ctx.start.column)
 
     def visitIdentifierExpr(self, ctx: JohnFKennedyParser.IdentifierExprContext):
-        return VariableNode(ctx.IDENTIFIER().getText(), ctx.start.line, ctx.start.column)
+        var_name = ctx.IDENTIFIER().getText()
+        type_name = self.var_types.get(var_name)
+        return VariableNode(var_name, ctx.start.line, ctx.start.column, type_name=type_name)
 
     def visitArrayAccessExpr(self, ctx: JohnFKennedyParser.ArrayAccessExprContext):
         name = ctx.IDENTIFIER().getText()
@@ -151,12 +161,14 @@ class ASTBuilder(JohnFKennedyVisitor):
         return Type.FLOAT  # Alias for FLOAT64
 
     def visitVarDeclareAssignStatement(self, ctx: JohnFKennedyParser.VarDeclareAssignStatementContext):
-        # Get the expression and infer its type
         value = self.visit(ctx.expression())
         var_name = ctx.IDENTIFIER().getText()
-        
-        # Create a DeclareAssignNode with the inferred type
-        return DeclareAssignNode("var", var_name, ctx.start.line, ctx.start.column, value)
+        node = DeclareAssignNode("var", var_name, ctx.start.line, ctx.start.column, value)
+        # After type inference, node.type_name will be set
+        # So we infer it now and store it
+        node.type_name = Type.infer_type_from_value(value)
+        self.var_types[var_name] = node.type_name
+        return node
 
     # Array types
     def visitArrayInt8Type(self, ctx: JohnFKennedyParser.ArrayInt8TypeContext):
