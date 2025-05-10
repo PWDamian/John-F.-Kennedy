@@ -11,6 +11,7 @@ struct Rectangle {
     int width;
     int height;
     int area;
+    string name;
 };
 
 // Create a Point instance
@@ -35,11 +36,13 @@ print p2.y;
 struct Rectangle rect;
 rect.width = 10;
 rect.height = 20;
+rect.name = "Rektangel";
 
 // Calculate area manually
 rect.area = rect.width * rect.height;
 
 print "Rectangle:";
+print rect.name;
 print rect.width;
 print rect.height;
 print rect.area;
