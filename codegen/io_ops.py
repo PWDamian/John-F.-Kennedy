@@ -23,7 +23,11 @@ def generate_print(self, node):
 
     if type_name == Type.STRING:
         fmt_ptr = get_print_format(self, "%s\n\0", "format_str_string")
-        self.builder.call(self.printf, [fmt_ptr, value])
+        if hasattr(node.expression, 'name') and self.get_variable_type(node.expression.name + "_ptr") == Type.STRING:
+            str_ptr = self.get_variable(node.expression.name + "_ptr")
+            self.builder.call(self.printf, [fmt_ptr, str_ptr])
+        else:
+            self.builder.call(self.printf, [fmt_ptr, value])
     elif type_name == Type.BOOL:
         if not hasattr(self, 'true_str'):
             true_data = bytearray("true\0", "utf8")

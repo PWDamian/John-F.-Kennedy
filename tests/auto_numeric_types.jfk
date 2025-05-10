@@ -7,6 +7,8 @@ float32 f;
 float64 g;
 float h;
 
+
+int atest = 13;
 a = 1316134912;
 b = 10000000000000;
 c = 10000000000000;
@@ -16,6 +18,7 @@ f = 7.8;
 g = 7.8;
 h = 7.8;
 
+print atest;
 print a;
 print b;
 print c;

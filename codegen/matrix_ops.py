@@ -25,20 +25,42 @@ def generate_matrix_assign(self, node):
     if not matrix_ptr:
         raise ValueError(f"Matrix variable {node.name} not declared")
 
+
     element_type = self.matrix_element_types.get(node.name)
     if not element_type:
         raise ValueError(f"Unknown element type for matrix {node.name}")
 
-    row_index = type_utils.normalize_index(self, expression.generate_expression(self, node.row_index))
-    col_index = type_utils.normalize_index(self, expression.generate_expression(self, node.col_index))
 
-    indices = [
-        ir.Constant(ir.IntType(32), 0),
-        row_index,
-        col_index
-    ]
-    element_ptr = self.builder.gep(matrix_ptr, indices)
+    row_index = expression.generate_expression(self, node.row_index)
+    col_index = expression.generate_expression(self, node.col_index)
 
+    # Ensure indices are within bounds
+    if not isinstance(row_index.type, ir.IntType) or not isinstance(col_index.type, ir.IntType):
+        raise ValueError("Matrix indices must be integers")
+
+    # Calculate the element pointer
+    element_ptr = self.builder.gep(matrix_ptr, [ir.Constant(ir.IntType(32), 0), row_index, col_index])
+
+    # Generate the value to assign
     value = expression.generate_expression(self, node.value)
     value = type_utils.convert_if_needed(self, value, element_type)
     self.builder.store(value, element_ptr)
+
+
+def generate_matrix_access(self, node):
+    matrix_ptr = self.get_variable(node.name)
+    if not matrix_ptr:
+        raise ValueError(f"Matrix variable {node.name} not declared")
+
+    row_index = expression.generate_expression(self, node.row_index)
+    col_index = expression.generate_expression(self, node.col_index)
+
+    # Ensure indices are within bounds
+    if not isinstance(row_index.type, ir.IntType) or not isinstance(col_index.type, ir.IntType):
+        raise ValueError("Matrix indices must be integers")
+
+    # Calculate the element pointer
+    element_ptr = self.builder.gep(matrix_ptr, [ir.Constant(ir.IntType(32), 0), row_index, col_index])
+
+    # Load the element value
+    return self.builder.load(element_ptr, name=f"{node.name}_element")

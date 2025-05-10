@@ -41,6 +41,7 @@ def generate_function_declaration(code_gen, node):
                 code_gen.strcpy = ir.Function(code_gen.module, strcpy_ty, name="strcpy")
 
             code_gen.builder.call(code_gen.strcpy, [alloc, func.args[i]])
+            code_gen.declare_variable(param.name + "_ptr", alloc, Type.STRING)
         else:
             alloc = code_gen.builder.alloca(Type.get_ir_type(param.type), name=param.name)
             code_gen.builder.store(func.args[i], alloc)

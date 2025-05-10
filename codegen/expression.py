@@ -91,7 +91,7 @@ def generate_variable(self, node):
         raise ValueError(f"Variable {node.name} not declared")
 
     if self.get_variable_type(node.name) == Type.STRING:
-        return self.builder.bitcast(ptr, ir.PointerType(ir.IntType(8)))
+        return self.builder.load(ptr, name=node.name)
     else:
         return self.builder.load(ptr, name=node.name)
 

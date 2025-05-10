@@ -86,18 +86,25 @@ class CodeGenerator:
         # Second pass: handle variable declarations
         for node in ast:
             if (is_declare_node(node)) and not isinstance(node, FunctionDeclarationNode):
-                try:
-                    if self.builder is None:
-                        self._create_main_function()
-                    self.generate_node(node)
-                except Exception as e:
-                    if None not in [node.line, node.column]:
-                        print(f"Error at {node.line}:{node.column}:")
-                    else:
-                        print(node)
-                    print(f"\tMessage: {str(e)} for node `{node}`")
-                    traceback.print_exc()
-                    exit(1)
+                # Only emit declarations without initializers or with constant initializers
+                is_const_init = False
+                if hasattr(node, 'value') and node.value is not None:
+                    # Check if the initializer is a constant (number or string literal)
+                    from ast2 import NumberNode, StringValueNode, BooleanNode
+                    is_const_init = isinstance(node.value, (NumberNode, StringValueNode, BooleanNode))
+                if not hasattr(node, 'value') or node.value is None or is_const_init:
+                    try:
+                        if self.builder is None:
+                            self._create_main_function()
+                        self.generate_node(node)
+                    except Exception as e:
+                        if None not in [node.line, node.column]:
+                            print(f"Error at {node.line}:{node.column}:")
+                        else:
+                            print(node)
+                        print(f"\tMessage: {str(e)} for node `{node}`")
+                        traceback.print_exc()
+                        exit(1)
 
         # Third pass: handle function definitions
         for node in ast:
@@ -118,9 +125,29 @@ class CodeGenerator:
             if self.func is None or self.func.name != "main":
                 self._create_main_function()
 
+            # First, emit all assignment and matrix assignment statements
             for node in ast:
-                if not isinstance(node, FunctionDeclarationNode) and not isinstance(node, StructDeclarationNode) and not (
-                        is_declare_node(node) and not isinstance(node, FunctionDeclarationNode)):
+                if isinstance(node, AssignNode) or isinstance(node, MatrixAssignNode):
+                    try:
+                        self.generate_node(node)
+                    except Exception as e:
+                        if None not in [node.line, node.column]:
+                            print(f"Error at {node.line}:{node.column}:")
+                        else:
+                            print(node)
+                        print(f"\tMessage: {str(e)} for node `{node}`")
+                        traceback.print_exc()
+                        exit(1)
+
+            # Then, emit all other statements, including declarations with non-constant initializers
+            for node in ast:
+                is_nonconst_decl = False
+                if (is_declare_node(node)) and not isinstance(node, FunctionDeclarationNode):
+                    if hasattr(node, 'value') and node.value is not None:
+                        from ast2 import NumberNode, StringValueNode, BooleanNode
+                        is_nonconst_decl = not isinstance(node.value, (NumberNode, StringValueNode, BooleanNode))
+                if (not isinstance(node, FunctionDeclarationNode) and not isinstance(node, StructDeclarationNode) and not (
+                        is_declare_node(node) and not isinstance(node, FunctionDeclarationNode) and not is_nonconst_decl) and not isinstance(node, AssignNode) and not isinstance(node, MatrixAssignNode)) or is_nonconst_decl:
                     try:
                         self.generate_node(node)
                     except Exception as e:

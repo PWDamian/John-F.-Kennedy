@@ -33,8 +33,12 @@ def generate_declare_assign(self, node):
         node.type_name = Type.infer_type_from_value(node.value)
 
     if node.type_name == Type.STRING:
-        # For strings, we need to allocate memory for the string
-        string_ptr = self.builder.alloca(ir.PointerType(ir.IntType(8)))
+        # Allocate a string buffer as [256 x i8] and create a pointer to it
+        str_buf = self.builder.alloca(ir.ArrayType(ir.IntType(8), 256))
+        str_ptr = self.builder.bitcast(str_buf, ir.PointerType(ir.IntType(8)))
+        self.declare_variable(node.name, str_buf, Type.STRING)
+        # Declare the pointer variable for the string
+        self.declare_variable(node.name + "_ptr", str_ptr, Type.STRING)
         if node.value is not None:
             # If there's an initial value, create a global string constant
             string_data = bytearray(str(node.value.value) + "\0", "utf8")
@@ -43,11 +47,17 @@ def generate_declare_assign(self, node):
             string_global.initializer = ir.Constant(string_arr_ty, string_data)
             string_global.global_constant = True
             string_ptr_val = self.builder.bitcast(string_global, ir.PointerType(ir.IntType(8)))
-            self.builder.store(string_ptr_val, string_ptr)
+            # Use strcpy to copy the string data into the buffer
+            if not hasattr(self, 'strcpy'):
+                strcpy_ty = ir.FunctionType(ir.PointerType(ir.IntType(8)),
+                                            [ir.PointerType(ir.IntType(8)), ir.PointerType(ir.IntType(8))])
+                self.strcpy = ir.Function(self.module, strcpy_ty, name="strcpy")
+            self.builder.call(self.strcpy, [str_ptr, string_ptr_val])
         else:
-            # If no initial value, store null
-            self.builder.store(ir.Constant(ir.PointerType(ir.IntType(8)), None), string_ptr)
-        self.declare_variable(node.name, string_ptr, node.type_name)
+            # If no initial value, store null terminator at the start of the buffer
+            zero_byte = ir.Constant(ir.IntType(8), 0)
+            buf_start = self.builder.gep(str_buf, [ir.Constant(ir.IntType(32), 0), ir.Constant(ir.IntType(32), 0)])
+            self.builder.store(zero_byte, buf_start)
     else:
         # For other types, allocate memory based on the type
         var_type = Type.get_ir_type(node.type_name)

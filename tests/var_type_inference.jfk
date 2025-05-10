@@ -22,6 +22,8 @@ var equality = sum == 45.14;       // Inferred as bool
 // Type inference in complex expressions
 var complex_expr = (int_val + float_val) * 2 > 100;  // Inferred as bool
 
+var str = "hello";
+
 // Print some values to verify
 print int_val;
 print float_val;
@@ -30,3 +32,4 @@ print sum;
 print logical_and;
 print comparison;
 print complex_expr; 
+print str;
