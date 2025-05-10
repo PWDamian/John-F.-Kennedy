@@ -54,8 +54,6 @@ class Type:
             return cls.ARRAY  # For now, treat matrices as arrays
         elif isinstance(value, StructFieldAccessNode):
             return cls.STRUCT
-        elif isinstance(value, VariableNode):
-            return value
         elif isinstance(value, BinaryOpNode):
             # For binary operations, infer type from operands
             left_type = cls.infer_type_from_value(value.left)
