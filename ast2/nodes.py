@@ -178,12 +178,18 @@ class MatrixAssignNode(ASTNode):
 class DeclareAssignNode(ASTNode):
     def __init__(self, type_name, name, line: int, column: int, value=None):
         super().__init__(line, column)
-        self.type = type_name
+        self.type_name = type_name
         self.name = name
         self.value = value
 
+    def accept(self, visitor):
+        # If this is a var declaration, infer the type from the value
+        if self.type_name == Type.VAR and self.value is not None:
+            self.type_name = Type.infer_type_from_value(self.value)
+        return visitor.visit_declare_assign(self)
+
     def __str__(self):
-        return f"{self.type} {self.name} = {self.value if self.value is not None else 'uninitialized'}"
+        return f"{self.type_name} {self.name} = {self.value if self.value is not None else 'uninitialized'}"
 
 
 class DeclareArrayNode(ASTNode):
@@ -393,7 +399,7 @@ def print_ast_as_tree(node, indent=0):
         print(f"{prefix}  Value:")
         print_ast_as_tree(node.value, indent + 2)
     elif isinstance(node, DeclareAssignNode):
-        print(f"{prefix}DeclareAssign: {node.name} ({node.type})")
+        print(f"{prefix}DeclareAssign: {node.name} ({node.type_name})")
         if node.value is not None:
             print(f"{prefix}  Value:")
             print_ast_as_tree(node.value, indent + 2)

@@ -59,6 +59,7 @@ matrixType
 
 statement
     : declareAssignStatement
+    | varDeclareAssignStatement
     | assignStatement
     | declareArrayStatement
     | declareMatrixStatement
@@ -75,6 +76,7 @@ statement
     ;
 
 declareAssignStatement : type IDENTIFIER ('=' expression)? ';';
+varDeclareAssignStatement : 'var' IDENTIFIER '=' expression ';';
 declareArrayStatement : arrayType IDENTIFIER '[' NUMBER ']' ';';
 declareMatrixStatement : matrixType IDENTIFIER '[' NUMBER ']' '[' NUMBER ']' ';';
 declareStructStatement : 'struct' IDENTIFIER IDENTIFIER ';';

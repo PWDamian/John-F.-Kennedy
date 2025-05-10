@@ -50,7 +50,10 @@ def compile_jfk_file(input_file, show_ast=True, show_llvm=True, run_binary=True,
         if show_llvm:
             print("\nLLVM IR:")
             print(llvm_ir)
-    except:
+    except Exception as e:
+        print(f"Error during compilation: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return False
 
     base_name = os.path.basename(input_file).split('.')[0]

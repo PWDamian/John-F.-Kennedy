@@ -1,0 +1,62 @@
+// Test file for var type inference
+
+// Basic type inference
+var int_val = 42;              // Inferred as int64
+var float_val = 3.14;          // Inferred as float64
+var bool_val = true;           // Inferred as bool
+var string_val = "hello";      // Inferred as string
+
+// Type inference with arithmetic operations
+var sum = int_val + float_val;     // Inferred as float64 (int64 + float64)
+var product = int_val * 2;         // Inferred as int64 (int64 * int64)
+var division = float_val / 2;      // Inferred as float64 (float64 / int64)
+
+// Type inference with logical operations
+var logical_and = true && false;   // Inferred as bool
+var logical_or = true || false;    // Inferred as bool
+var logical_not = !true;           // Inferred as bool
+
+// Type inference with comparison operations
+var comparison = int_val > 10;     // Inferred as bool
+var equality = sum == 45.14;       // Inferred as bool
+
+// Type inference with array access
+array_int64 arr[5];
+var first_element = arr[0];        // Inferred as int64
+
+// Type inference with matrix access
+matrix_int64 mat[3][3];
+var matrix_element = mat[0][0];    // Inferred as int64
+
+// Type inference with struct access
+struct Person {
+    string name;
+    int64 age;
+    bool is_student;
+};
+
+Person p;
+var person_name = p.name;          // Inferred as string
+var person_age = p.age;            // Inferred as int64
+var is_student = p.is_student;     // Inferred as bool
+
+// Type inference in function calls
+int64 add(int64 a, int64 b) {
+    return a + b;
+}
+
+var result = add(10, 20);          // Inferred as int64
+
+// Type inference in complex expressions
+var complex_expr = (int_val + float_val) * 2 > 100;  // Inferred as bool
+
+// Print some values to verify
+print int_val;
+print float_val;
+print bool_val;
+print string_val;
+print sum;
+print logical_and;
+print comparison;
+print result;
+print complex_expr; 

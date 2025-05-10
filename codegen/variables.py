@@ -28,65 +28,33 @@ def generate_assign(self, node):
 
 
 def generate_declare_assign(self, node):
-    is_global = self.func is None or self.func.name == "main" and len(self.scopes) == 1
+    # If this is a var declaration, infer the type from the value
+    if node.type_name == Type.VAR and node.value is not None:
+        node.type_name = Type.infer_type_from_value(node.value)
 
-    if node.type == Type.STRING:
-        if is_global:
-            string_type = ir.ArrayType(ir.IntType(8), 256)
-            global_var = ir.GlobalVariable(self.module, string_type, name=node.name)
-            global_var.initializer = ir.Constant(string_type, bytearray(256))  # Initialize to zero
-            global_var.linkage = 'common'
-
-            self.declare_variable(node.name, global_var, Type.STRING)
-
-            if node.value:
-                value = expression.generate_expression(self, node.value)
-
-                if not hasattr(self, 'strcpy'):
-                    strcpy_ty = ir.FunctionType(ir.PointerType(ir.IntType(8)),
-                                                [ir.PointerType(ir.IntType(8)), ir.PointerType(ir.IntType(8))])
-                    self.strcpy = ir.Function(self.module, strcpy_ty, name="strcpy")
-
-                ptr = self.builder.bitcast(global_var, ir.PointerType(ir.IntType(8)))
-                self.builder.call(self.strcpy, [ptr, value])
+    if node.type_name == Type.STRING:
+        # For strings, we need to allocate memory for the string
+        string_ptr = self.builder.alloca(ir.PointerType(ir.IntType(8)))
+        if node.value is not None:
+            # If there's an initial value, create a global string constant
+            string_data = bytearray(str(node.value.value) + "\0", "utf8")
+            string_arr_ty = ir.ArrayType(ir.IntType(8), len(string_data))
+            string_global = ir.GlobalVariable(self.module, string_arr_ty, name=f"str_{node.name}")
+            string_global.initializer = ir.Constant(string_arr_ty, string_data)
+            string_global.global_constant = True
+            string_ptr_val = self.builder.bitcast(string_global, ir.PointerType(ir.IntType(8)))
+            self.builder.store(string_ptr_val, string_ptr)
         else:
-            buffer = self.builder.alloca(ir.ArrayType(ir.IntType(8), 256), name=node.name)
-            ptr = self.builder.bitcast(buffer, ir.PointerType(ir.IntType(8)))
-            self.declare_variable(node.name, buffer, node.type)
-
-            if node.value:
-                value = expression.generate_expression(self, node.value)
-
-                if not hasattr(self, 'strcpy'):
-                    strcpy_ty = ir.FunctionType(ir.PointerType(ir.IntType(8)),
-                                                [ir.PointerType(ir.IntType(8)), ir.PointerType(ir.IntType(8))])
-                    self.strcpy = ir.Function(self.module, strcpy_ty, name="strcpy")
-
-                self.builder.call(self.strcpy, [ptr, value])
+            # If no initial value, store null
+            self.builder.store(ir.Constant(ir.PointerType(ir.IntType(8)), None), string_ptr)
+        self.declare_variable(node.name, string_ptr, node.type_name)
     else:
-        internal_type = Type.map_to_internal_type(node.type)
-        llvm_type = Type.get_ir_type(internal_type)
-
-        if is_global:
-            global_var = ir.GlobalVariable(self.module, llvm_type, name=node.name)
-
-            if node.value:
-                value = expression.generate_expression(self, node.value)
-                value = type_utils.convert_if_needed(self, value, internal_type)
-                if isinstance(value, ir.Constant):
-                    global_var.initializer = value
-                else:
-                    global_var.initializer = ir.Constant(llvm_type, 0)
-                    self.builder.store(value, global_var)
-            else:
-                global_var.initializer = ir.Constant(llvm_type, 0)
-
-            self.declare_variable(node.name, global_var, internal_type)
-        else:
-            ptr = self.builder.alloca(llvm_type, name=node.name)
-            self.declare_variable(node.name, ptr, internal_type)
-
-            if node.value:
-                value = expression.generate_expression(self, node.value)
-                value = type_utils.convert_if_needed(self, value, internal_type)
-                self.builder.store(value, ptr)
+        # For other types, allocate memory based on the type
+        var_type = Type.get_ir_type(node.type_name)
+        var_ptr = self.builder.alloca(var_type)
+        if node.value is not None:
+            value = expression.generate_expression(self, node.value)
+            # Convert value to the correct type if needed
+            value = type_utils.convert_if_needed(self, value, node.type_name)
+            self.builder.store(value, var_ptr)
+        self.declare_variable(node.name, var_ptr, node.type_name)

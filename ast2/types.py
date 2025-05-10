@@ -1,5 +1,7 @@
 from llvmlite import ir
 
+from ast2 import VariableNode
+
 
 class Type:
     INT8 = "int8"
@@ -18,6 +20,7 @@ class Type:
     BOOL = "bool"
     VOID = "void"  # Add void type constant
     STRUCT = "struct"  # Add struct type
+    VAR = "var"  # Add var type for type inference
 
     # Type hierarchy for numeric types (from lowest to highest precision)
     numeric_hierarchy = [
@@ -27,6 +30,45 @@ class Type:
 
     # Store struct definitions
     struct_types = {}
+
+    @classmethod
+    def infer_type_from_value(cls, value):
+        from .nodes import (
+            NumberNode, BooleanNode, StringValueNode, ArrayAccessNode,
+            MatrixAccessNode, BinaryOpNode, LogicalOpNode, ComparisonNode,
+            LogicalNotNode, StructFieldAccessNode
+        )
+        """Infer the type from a value node"""
+        if isinstance(value, NumberNode):
+            if isinstance(value.value, int):
+                return cls.INT64  # Default to int64 for integers
+            elif isinstance(value.value, float):
+                return cls.FLOAT64  # Default to float64 for floats
+        elif isinstance(value, BooleanNode):
+            return cls.BOOL
+        elif isinstance(value, StringValueNode):
+            return cls.STRING
+        elif isinstance(value, ArrayAccessNode):
+            return cls.ARRAY
+        elif isinstance(value, MatrixAccessNode):
+            return cls.ARRAY  # For now, treat matrices as arrays
+        elif isinstance(value, StructFieldAccessNode):
+            return cls.STRUCT
+        elif isinstance(value, VariableNode):
+            return value
+        elif isinstance(value, BinaryOpNode):
+            # For binary operations, infer type from operands
+            left_type = cls.infer_type_from_value(value.left)
+            right_type = cls.infer_type_from_value(value.right)
+            return cls.get_common_type(left_type, right_type)
+        elif isinstance(value, LogicalOpNode):
+            return cls.BOOL
+        elif isinstance(value, ComparisonNode):
+            return cls.BOOL
+        elif isinstance(value, LogicalNotNode):
+            return cls.BOOL
+        else:
+            raise ValueError(f"Cannot infer type from value: {value}")
 
     @classmethod
     def register_struct_type(cls, name, fields):

@@ -150,6 +150,14 @@ class ASTBuilder(JohnFKennedyVisitor):
     def visitFloatType(self, ctx: JohnFKennedyParser.FloatTypeContext):
         return Type.FLOAT  # Alias for FLOAT64
 
+    def visitVarDeclareAssignStatement(self, ctx: JohnFKennedyParser.VarDeclareAssignStatementContext):
+        # Get the expression and infer its type
+        value = self.visit(ctx.expression())
+        var_name = ctx.IDENTIFIER().getText()
+        
+        # Create a DeclareAssignNode with the inferred type
+        return DeclareAssignNode("var", var_name, ctx.start.line, ctx.start.column, value)
+
     # Array types
     def visitArrayInt8Type(self, ctx: JohnFKennedyParser.ArrayInt8TypeContext):
         return "array_int8"
