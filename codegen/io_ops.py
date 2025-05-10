@@ -1,6 +1,6 @@
 from llvmlite import ir
 
-from ast2 import Type, ArrayAccessNode
+from ast2 import Type, ArrayAccessNode, MatrixAccessNode
 from codegen import expression, type_utils
 
 
@@ -9,6 +9,8 @@ def generate_print(self, node):
 
     if isinstance(node.expression, ArrayAccessNode):
         type_name = self.array_element_types.get(node.expression.name)
+    elif isinstance(node.expression, MatrixAccessNode):
+        type_name = self.matrix_element_types.get(node.expression.name)
     elif hasattr(node.expression, 'name'):
         type_name = self.get_variable_type(node.expression.name)
     elif hasattr(node.expression, 'array_element_types') and hasattr(node.expression, 'name'):
@@ -25,7 +27,7 @@ def generate_print(self, node):
 
     if type_name == Type.STRING:
         fmt_ptr = get_print_format(self, "%s\n\0", "format_str_string")
-        if isinstance(node.expression, ArrayAccessNode):
+        if isinstance(node.expression, ArrayAccessNode) or isinstance(node.expression, MatrixAccessNode):
             self.builder.call(self.printf, [fmt_ptr, value])
         elif hasattr(node.expression, 'name') and self.get_variable_type(node.expression.name + "_ptr") == Type.STRING:
             str_ptr = self.get_variable(node.expression.name + "_ptr")
